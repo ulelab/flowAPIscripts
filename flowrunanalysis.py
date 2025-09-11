@@ -241,9 +241,9 @@ def main():
 
         payload = {
             "params": {
-                "move_umi_to_header": "true",
-                "umi_header_format": "NNNNNNNNNN",
-                "umi_separator": "_",
+                "move_umi_to_header": "false",
+                #"umi_header_format": "NNNNNNNNNN",
+                "umi_separator": "rbc:",
                 "skip_umi_dedupe": "false",
                 "crosslink_position": "start",
             },
