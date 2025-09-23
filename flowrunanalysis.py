@@ -9,7 +9,7 @@ import numpy as np
 import fnmatch
 
 # -------------------------
-# CLI
+# CLI Usage - python3 ./flowrunanalysis.py --pid ######### --filter sample_name "*A" -n #ofbatches
 # -------------------------
 def parse_args():
     p = argparse.ArgumentParser(description="Run Flow.bio CLIP analysis (fetch + client-side filter by sample name)")
@@ -39,12 +39,12 @@ def setup_logging(args):
     logging.basicConfig(level=level, format="%(asctime)s | %(levelname)-8s | %(message)s")
 
 # -------------------------
-# Fixed CLIP pipeline settings
+# CLIP pipeline settings
 # -------------------------
 PIPELINE_CLIP = {
     "prep_execution_id": "602442133516131481",
     "pipeline_id":       "960154035051242353",
-    "pipeline_version":  "1.6",
+    "pipeline_version":  "1.7",
 }
 
 # -------------------------
@@ -181,7 +181,7 @@ def main():
 
     project_id = args.project_id
 
-    # Fixed CLIP pipeline settings
+    # CLIP pipeline settings
     prep_execution_id = PIPELINE_CLIP["prep_execution_id"]
     pipeline_id       = PIPELINE_CLIP["pipeline_id"]
     pipeline_version  = PIPELINE_CLIP["pipeline_version"]
@@ -215,7 +215,7 @@ def main():
 
     selected = filter_by_sample_name(project_samples, name_glob)
 
-    # Print filtered list exactly like your working snippet
+    # Print filtered list
     print(f"\nFiltered {len(selected)} samples:")
     for s in selected:
         print(f"  {s['id']}: {s['name']}")
@@ -228,7 +228,7 @@ def main():
     chunks = [list(chunk) for chunk in np.array_split(np.array(selected, dtype=object), n_chunks)]
     logging.info("Prepared %d execution batch(es)", len(chunks))
 
-    # Build and (optionally) submit one execution per chunk
+    # Build and submit one execution per chunk
     run_urls = []
     for i, chunk in enumerate(chunks, start=1):
         rows = [{
@@ -242,10 +242,11 @@ def main():
         payload = {
             "params": {
                 "move_umi_to_header": "false",
-                #"umi_header_format": "NNNNNNNNNN",
+                #"umi_header_format": "NNNNNNN",
                 "umi_separator": "rbc:",
                 "skip_umi_dedupe": "false",
                 "crosslink_position": "start",
+                "encode_eclip": "true",
             },
             "data_params": data_params,
             "csv_params": {"samplesheet": {"rows": rows, "paired": "both"}},
