@@ -15,12 +15,10 @@ A Flow.bio account with project + pipeline access
 
 Installation
 
-Clone this repository and install requirements:
+Clone this repository:
 
 git clone https://github.com/ulelab/flowAPIscripts.git
 cd flowAPIscripts
-pip install -r requirements.txt   # if you maintain a requirements file
-
 
 Make the script executable:
 
@@ -42,7 +40,7 @@ Optional arguments
 Example: --filter sample_name "*A"
 
 -n / --num-chunks : Split selected samples into N execution batches using numpy.array_split.
-Example: -n 11 runs 110 samples as 11 executions of ~10 each.
+Example: -n 11 runs 110 samples as 11 executions of 10 each.
 
 --dry-run : Resolve all inputs and print planned submissions without actually running them.
 
