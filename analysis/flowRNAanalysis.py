@@ -9,10 +9,10 @@ import numpy as np
 import fnmatch
 
 # -------------------------
-# CLI Usage - python3 ./flowrunanalysis.py --pid ######### --filter sample_name "*A" -n #ofbatches
+# CLI Usage - python3 ./flowRNAanalysis.py --pid ######### --filter sample_name "*A" -n #ofbatches
 # -------------------------
 def parse_args():
-    p = argparse.ArgumentParser(description="Run Flow.bio CLIP analysis (fetch + client-side filter by sample name)")
+    p = argparse.ArgumentParser(description="Run Flow.bio RNA-seq analysis (fetch + client-side filter by sample name)")
     p.add_argument("--pid", "--PID", dest="project_id", required=True,
                    help="Flow.bio Project ID (string)")
     p.add_argument("--filter", nargs=2, metavar=("KEY", "VALUE"), default=None,
@@ -41,10 +41,10 @@ def setup_logging(args):
 # -------------------------
 # CLIP pipeline settings
 # -------------------------
-PIPELINE_CLIP = {
-    "prep_execution_id": "602442133516131481",
-    "pipeline_id":       "960154035051242353",
-    "pipeline_version":  "1.7",
+PIPELINE_RNA = {
+    "prep_execution_id": "538918850957626478",
+    "pipeline_id":       "583494301973770088",
+    "pipeline_version":  "3.12",
 }
 
 # -------------------------
@@ -116,27 +116,20 @@ def fetch_prep_execution(session: requests.Session, token: str, prep_execution_i
 # File binding
 # -------------------------
 FILE_MAP = {
+    # Core genome references
     "fasta": "Homo_sapiens.GRCh38.fasta",
     "gtf": "Homo_sapiens.GRCh38.109.gtf",
-    "smrna_fasta": "Homo_sapiens.GRCh38.smrna.fasta",
-    "fasta_fai": "Homo_sapiens.GRCh38.fasta.fai",
-    "chrom_sizes": "Homo_sapiens.GRCh38.fasta.sizes",
-    "target_genome_index": "star",
-    "smrna_genome_index": "bowtie",
-    "smrna_fasta_fai": "Homo_sapiens.GRCh38.smrna.fasta.fai",
-    "smrna_chrom_sizes": "Homo_sapiens.GRCh38.smrna.fasta.sizes",
-    "longest_transcript": "longest_transcript.txt",
-    "longest_transcript_fai": "longest_transcript.fai",
-    "longest_transcript_gtf": "longest_transcript.gtf",
-    "filtered_gtf": "Homo_sapiens_filtered.gtf",
-    "seg_gtf": "Homo_sapiens_seg.gtf",
-    "seg_filt_gtf": "Homo_sapiens_filtered_seg.gtf",
-    "seg_resolved_gtf": "Homo_sapiens_filtered_seg_genicOtherfalse.resolved.gtf",
-    "seg_resolved_gtf_genic": "Homo_sapiens_filtered_seg_genicOthertrue.resolved.gtf",
-    "regions_gtf": "Homo_sapiens_regions.gtf.gz",
-    "regions_filt_gtf": "Homo_sapiens_filtered_regions.gtf.gz",
-    "regions_resolved_gtf": "Homo_sapiens_filtered_regions_genicOtherfalse.resolved.gtf",
-    "regions_resolved_gtf_genic": "Homo_sapiens_filtered_regions_genicOthertrue.resolved.gtf",
+
+    # RNA-seq specific references and indices
+    "gene_bed": "Homo_sapiens.GRCh38.109.bed",
+    "transcript_fasta": "genome.transcripts.fa",
+    "splicesites": "Homo_sapiens.GRCh38.109.splice_sites.txt",
+
+    # Aligner / quant indices (directories)
+    "star_index": "star",
+    "rsem_index": "rsem",
+    "hisat2_index": "hisat2",
+    "salmon_index": "salmon",
 }
 
 def build_data_params_from_execution(execution: Dict, file_map: Dict[str, str]) -> Dict[str, str]:
@@ -181,10 +174,10 @@ def main():
 
     project_id = args.project_id
 
-    # CLIP pipeline settings
-    prep_execution_id = PIPELINE_CLIP["prep_execution_id"]
-    pipeline_id       = PIPELINE_CLIP["pipeline_id"]
-    pipeline_version  = PIPELINE_CLIP["pipeline_version"]
+    # RNA pipeline settings
+    prep_execution_id = PIPELINE_RNA["prep_execution_id"]
+    pipeline_id       = PIPELINE_RNA["pipeline_id"]
+    pipeline_version  = PIPELINE_RNA["pipeline_version"]
 
     # HTTP session & auth
     session = requests.Session()
@@ -241,13 +234,57 @@ def main():
 
         payload = {
             "params": {
-                "move_umi_to_header": "false",
-                #"umi_header_format": "NNNNNNN",
-                "umi_separator": "rbc:",
-                "skip_umi_dedupe": "false",
-                "crosslink_position": "start",
-                "encode_eclip": "true",
+                # UMI
+                "with_umi": "true",
+                "umitools_extract_method": "regex",
+                "umitools_bc_pattern": "^(?P<discard_1>.{4})(?P<umi_1>.{5})",
+                "skip_umi_extract": "false",
+                "umitools_dedup_stats": "false",
+                "save_umi_intermeds": "false",
+
+                # Annotation/grouping
+                "gencode": "false",
+                "gtf_extra_attributes": "gene_name",
+                "gtf_group_features": "gene_id",
+                "featurecounts_group_type": "gene_biotype",
+                "featurecounts_feature_type": "exon",
+
+                # Align/quant
+                "aligner": "star_salmon",
+                "pseudo_aligner": "",
+                "bam_csi_index": "false",
+                "star_ignore_sjdbgtf": "false",
+                "stringtie_ignore_gtf": "false",
+                "save_unaligned": "false",
+                "save_align_intermeds": "false",
+                "skip_markduplicates": "false",
+                "skip_alignment": "false",
+                "skip_pseudo_alignment": "false",
+
+                # Trimming
+                "trimmer": "trimgalore",
+                "skip_trimming": "false",
+                "save_trimmed": "false",
+
+                # rRNA options
+                "remove_ribo_rna": "false",
+                "ribo_database_manifest": "./assets/rrna-db-defaults.txt",
+                "save_non_ribo_reads": "false",
+
+                # QC
+                "deseq2_vst": "true",
+                "skip_bigwig": "false",
+                "skip_stringtie": "false",
+                "skip_fastqc": "false",
+                "skip_preseq": "true",
+                "skip_qualimap": "false",
+                "skip_rseqc": "false",
+                "skip_biotype_qc": "false",
+                "skip_deseq2_qc": "false",
+                "skip_multiqc": "false",
+                "skip_qc": "false",
             },
+            # File/data bindings are provided via data_params (from FILE_MAP)
             "data_params": data_params,
             "csv_params": {"samplesheet": {"rows": rows, "paired": "both"}},
             "retries": None,

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Flow upload_sample — CLIP-safe type_specific_metadata + post-upload GraphQL update.
+Flow upload_sample — multi-sample-type type_specific_metadata + post-upload GraphQL update.
 
 - REST /upload/sample:
-    * top-level: project, organism, sample_type
-    * type_specific_metadata (JSON): only ALLOWED keys for the sample_type (CLIP whitelist below)
+    * top-level: project, organism, sample_type (read from TSV 'Type')
+    * type_specific_metadata (JSON): only ALLOWED keys for the inferred sample type
 - Post-upload (GraphQL):
     * updateSample(...) via flat arguments on Mutation, selecting fields under updateSample { sample { ... } }
     * We DO NOT use purificationTargetId. We pass purificationTarget as a String (from TSV).
@@ -23,11 +23,12 @@ import flowbio
 import inspect  # optional; safe to keep
 
 
-PROJECT_ID = 931525950443849782
+PROJECT_ID = 835660727529078273
 INTERNAL_RETRIES = 5
 DEFAULT_CHUNK_SIZE = 1_000_000
 
 # ---- Per-sample-type whitelist of type_specific_metadata keys ----
+# Sample type is read from TSV column 'Type' and used to filter keys below.
 ALLOWED_TSM: Dict[str, set] = {
     "CLIP": {
         # barcodes/adapters/primers/UMIs that are typically safe for CLIP
@@ -42,7 +43,84 @@ ALLOWED_TSM: Dict[str, set] = {
         "umi_separator",
         # (we intentionally omit experimental_method and purification_target for CLIP)
     },
-    # add other sample types here if needed
+    # RNA-Seq: strandedness and RNA selection are type-specific metadata
+    "RNA-SEQ": {
+        "strandedness",
+        "rna_selection_method",
+        # Some datasets may also include adapter/barcode fields; allow conservatively if present
+        "three_prime_adapter_name",
+        "three_prime_adapter_sequence",
+        "read1_primer",
+        "read2_primer",
+    },
+    # Ribo-Seq: ribosome and preparation-specific metadata
+    "RIBO-SEQ": {
+        "ribosome_type",
+        "size_selection",
+        "separation_method",
+        "stabilization_method",
+        # allow common library prep fields if provided
+        "three_prime_adapter_name",
+        "three_prime_adapter_sequence",
+        "read1_primer",
+        "read2_primer",
+    },
+}
+
+# ---- Controlled vocabulary normalization -------------------------------------
+def _norm_choice(value: str, mapping: Dict[str, str]) -> str:
+    v = (value or "").strip().lower()
+    if not v:
+        return ""
+    if v in mapping:
+        return mapping[v]
+    compact = "".join(ch for ch in v if ch.isalnum())
+    for k, out in mapping.items():
+        kcompact = "".join(ch for ch in k if ch.isalnum())
+        if compact == kcompact:
+            return out
+    return value.strip()
+
+RNA_STRANDEDNESS_MAP: Dict[str, str] = {
+    "reverse": "reverse",
+    "forward": "forward",
+    "unstranded": "unstranded",
+    "auto": "auto",
+    # aliases often used in libraries/TSVs
+    "rf": "reverse",
+    "fr": "forward",
+}
+
+RNA_SELECTION_MAP: Dict[str, str] = {
+    "ribominus": "ribominus",
+    "polya": "polya",
+    "targeted": "targeted",
+}
+
+RIBO_TYPE_MAP: Dict[str, str] = {
+    "monosome": "Monosome",
+    "disome": "Disome",
+    "polysomes": "Polysomes",
+    "polysome": "Polysomes",
+    "total ribosomes": "Total ribosomes",
+    "totalribosomes": "Total ribosomes",
+}
+
+RIBO_SIZE_SELECTION_MAP: Dict[str, str] = {
+    "standard monosome (28-30 nt)": "standard monosome (28-30 nt)",
+    "broad selection (25-35 nt)": "broad selection (25-35 nt)",
+    ">35 nt": "possible disomes (>35 nt)",
+    "possible disomes (>35 nt)": "possible disomes (>35 nt)",
+    "no size selection": "No size selection",
+    "none": "No size selection",
+    "other": "Other",
+}
+
+RIBO_SEPARATION_METHOD_MAP: Dict[str, str] = {
+    "sucrose gradient": "Sucrose gradient",
+    "cushion centrifugation": "Cushion centrifugation",
+    "none": "None",
+    "other": "Other",
 }
 
 # --- GraphQL: schema introspection (helpful once) -----------------------------
@@ -368,7 +446,7 @@ def add_if(d: Dict[str, Any], k: str, v: str):
 
 # ---- Main --------------------------------------------------------------------
 def main():
-    ap = argparse.ArgumentParser(description="Flow upload from TSV (CLIP-safe + GraphQL post-update)")
+    ap = argparse.ArgumentParser(description="Flow upload from TSV (multi-sample-type + GraphQL post-update)")
     ap.add_argument("tsv", help="Tab-delimited TSV")
     ap.add_argument("--rows", required=True, help="1-based rows, e.g. 1-10,15,22-24")
     ap.add_argument("--base-dir", default=".", help="Base dir for relative File paths")
@@ -447,11 +525,13 @@ def main():
             "read2_primer": (row.get("Read 2 Primer") or "").strip(),
             "umi_barcode_sequence": (row.get("UMI Barcode Sequence") or "").strip(),
             "umi_separator": (row.get("UMI Separator") or "").strip(),
-            "strandedness": (row.get("Strandedness") or "").strip(),
-            "rna_selection_method": (row.get("RNA Selection Method") or "").strip(),
-            "ribo_selection_method": (row.get("Size selection") or "").strip(),
-            "ribosome_type": (row.get("Ribosome Type") or "").strip(),
-            "separation_method": (row.get("Separation Method") or "").strip(),
+            # Normalize RNA-Seq controlled vocabularies
+            "strandedness": _norm_choice(row.get("Strandedness") or "", RNA_STRANDEDNESS_MAP),
+            "rna_selection_method": _norm_choice(row.get("RNA Selection Method") or "", RNA_SELECTION_MAP),
+            # Ribo-Seq: standardize size selection key name
+            "size_selection": _norm_choice((row.get("Size selection") or row.get("Size Selection") or ""), RIBO_SIZE_SELECTION_MAP),
+            "ribosome_type": _norm_choice((row.get("Ribosome Type") or ""), RIBO_TYPE_MAP),
+            "separation_method": _norm_choice((row.get("Separation Method") or ""), RIBO_SEPARATION_METHOD_MAP),
             "stabilization_method": (row.get("Ribosome stabilization method") or "").strip(),
             # DO NOT include experimental_method / purification_target for CLIP (causes 400)
         }
@@ -463,6 +543,34 @@ def main():
         allowed = ALLOWED_TSM.get(st_key, set())
         if allowed:
             tsm = {k: v for k, v in tsm.items() if k in allowed}
+        else:
+            # If sample type is unknown, keep only very safe library-prep keys
+            safe_keys = {
+                "three_prime_adapter_name",
+                "three_prime_adapter_sequence",
+                "read1_primer",
+                "read2_primer",
+            }
+            tsm = {k: v for k, v in tsm.items() if k in safe_keys}
+
+        # Soft validation/warnings for required or expected fields per sample type
+        def warn(msg: str):
+            print(f"[WARN] Row {idx} ({sample_name}) [{sample_type or 'UNKNOWN'}]: {msg}", file=sys.stderr)
+
+        if st_key == "RNA-SEQ":
+            if not ((row.get("Strandedness") or "").strip()):
+                warn("Missing Strandedness for RNA-Seq.")
+            if not ((row.get("RNA Selection Method") or "").strip()):
+                warn("Missing RNA Selection Method for RNA-Seq.")
+        elif st_key == "RIBO-SEQ":
+            if not ((row.get("Ribosome Type") or "").strip()):
+                warn("Missing Ribosome Type for Ribo-Seq.")
+            if not ((row.get("Size selection") or row.get("Size Selection") or "").strip()):
+                warn("Missing Size selection for Ribo-Seq.")
+            if not ((row.get("Separation Method") or "").strip()):
+                warn("Missing Separation Method for Ribo-Seq.")
+            if not ((row.get("Ribosome stabilization method") or "").strip()):
+                warn("Missing Ribosome stabilization method for Ribo-Seq.")
 
         # ---------- Top-level metadata for REST upload ----------
         metadata: Dict[str, Any] = {
