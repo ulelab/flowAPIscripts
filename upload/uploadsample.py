@@ -23,7 +23,7 @@ import flowbio
 import inspect  # optional; safe to keep
 
 
-PROJECT_ID = 835660727529078273
+PROJECT_ID = 229379887183914226
 INTERNAL_RETRIES = 5
 DEFAULT_CHUNK_SIZE = 1_000_000
 
@@ -41,13 +41,13 @@ ALLOWED_TSM: Dict[str, set] = {
         "read2_primer",
         "umi_barcode_sequence",
         "umi_separator",
-        # (we intentionally omit experimental_method and purification_target for CLIP)
     },
     # RNA-Seq: strandedness and RNA selection are type-specific metadata
     "RNA-SEQ": {
         "strandedness",
         "rna_selection_method",
-        # Some datasets may also include adapter/barcode fields; allow conservatively if present
+        # Do NOT include barcode fields here: the REST /upload rejects them for RNA-Seq.
+        # They will be applied via the post-upload GraphQL update instead.
         "three_prime_adapter_name",
         "three_prime_adapter_sequence",
         "read1_primer",
@@ -311,7 +311,7 @@ def build_update_vars(sample_id: str, meta: Dict[str, Any]) -> Dict[str, Any]:
                 val = True if val.lower() in {"1", "true", "yes"} else False
             vars_out[canon] = val
 
-    # Avoid changing project here unless you *intend* to
+    # Avoid changing project
     vars_out.pop("project", None)
 
     # DO NOT send empty strings
@@ -581,7 +581,7 @@ def main():
         if tsm:
             metadata["type_specific_metadata"] = json.dumps(tsm)
 
-        # Generic fields that have persisted for you
+        # Generic fields
         add_if(metadata, "pi", row.get("PI", ""))
         add_if(metadata, "scientist", row.get("Scientist", ""))
         add_if(metadata, "organisation", row.get("Organisation", ""))

@@ -242,11 +242,11 @@ def main():
         payload = {
             "params": {
                 "move_umi_to_header": "false",
-                #"umi_header_format": "NNNNNNN",
-                "umi_separator": "rbc:",
+                "umi_header_format": "NNN",
+                "umi_separator": "RX:Z:",
                 "skip_umi_dedupe": "false",
                 "crosslink_position": "start",
-                "encode_eclip": "true",
+                "encode_eclip": "false",
             },
             "data_params": data_params,
             "csv_params": {"samplesheet": {"rows": rows, "paired": "both"}},
