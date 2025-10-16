@@ -1,0 +1,16 @@
+@extract {exp}<umi[8]>,{run}<umi[2]>,<umi[3]>0:-1
+groups	ids	tags	distances	locations	minFindsG	maxFindsG	previous	left	right	partial5	partial3
+fiveprime	exp	*CAGTC	00:00:00	00:00:05	1	1	-	1	0	-	-
+fiveprime	exp	*AAGTC	00:00:00	00:00:05	1	1	-	1	0	-	-
+fiveprime	exp	*ACTGA	00:00:00	00:00:05	1	1	-	1	0	-	-
+fiveprime	exp	*AGTCA	00:00:00	00:00:05	1	1	-	1	0	-	-
+fiveprime	exp	*CCAGT	00:00:00	00:00:05	1	1	-	1	0	-	-
+fiveprime	exp	*CTGAC	00:00:00	00:00:05	1	1	-	1	0	-	-
+fiveprime	exp	*GACTG	00:00:00	00:00:05	1	1	-	1	0	-	-
+fiveprime	exp	*GGTCA	00:00:00	00:00:05	1	1	-	1	0	-	-
+fiveprime	exp	*GTCAG	00:00:00	00:00:05	1	1	-	1	0	-	-
+fiveprime	exp	*TCAGT	00:00:00	00:00:05	1	1	-	1	0	-	-
+fiveprime	exp	*TGACT	00:00:00	00:00:05	1	1	-	1	0	-	-
+fiveprime	exp	*TTCAG	00:00:00	00:00:05	1	1	-	1	0	-	-
+fiveprimehp	run	GGGGGGGG	02:01:00	00:13:21	1	1	{{fiveprime}}	1	0	-	-
+fiveprimehp	run	TTTTTTTTTTTT	02:01:00	00:13:25	1	1	{{fiveprime}}	1	0	-	-

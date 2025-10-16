@@ -1,0 +1,13 @@
+@extract <umi[3]>{exp}
+groups	ids	tags	distances	locations	minFindsG	maxFindsG	previous	left	right	partial5	partial3
+fiveprime	exp	TTAA	0	0:0:7	1	1	-	1	0	-	-
+fiveprime	exp	CAAT	0	0:0:7	1	1	-	1	0	-	-
+fiveprime	exp	TTGT	0	0:0:7	1	1	-	1	0	-	-
+fiveprime	exp	TGGC	0	0:0:7	1	1	-	1	0	-	-
+fiveprime	exp	CCGG	0	0:0:7	1	1	-	1	0	-	-
+fiveprime	exp	GGCG	0	0:0:7	1	1	-	1	0	-	-
+fiveprime	exp	GGTT	0	0:0:7	1	1	-	1	0	-	-
+fiveprime	exp	GGTC	0	0:0:7	1	1	-	1	0	-	-
+fiveprime	exp	CGGA	0	0:0:7	1	1	-	1	0	-	-
+fiveprime	exp	ACCT	0	0:0:7	1	1	-	1	0	-	-
+fiveprime	exp	GGCA	0	0:0:7	1	1	-	1	0	-	-

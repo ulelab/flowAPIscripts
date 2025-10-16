@@ -6,37 +6,30 @@ import sys
 from typing import Dict, List, Tuple
 import requests
 import numpy as np
-import fnmatch
+import re
 
 # -------------------------
-# CLI Usage - python3 ./flowrunanalysis.py --pid ######### --filter sample_name "*A" -n #ofbatches
+# CLI Usage - python3 ./flowrunanalysis.py --pid ######### --filter sample_name 'STAU2_HepG2.*$' -n #ofbatches --start-batch 1 --end-batch 10
 # -------------------------
 def parse_args():
     p = argparse.ArgumentParser(description="Run Flow.bio CLIP analysis (fetch + client-side filter by sample name)")
     p.add_argument("--pid", "--PID", dest="project_id", required=True,
                    help="Flow.bio Project ID (string)")
     p.add_argument("--filter", nargs=2, metavar=("KEY", "VALUE"), default=None,
-                   help='Metadata filter. Supported now: --filter sample_name "*A"')
+                   help='Metadata filter. Supported now: --filter sample_name "<regex>"')
     p.add_argument("-n", "--num-chunks", type=int, default=1,
                    help="Split selected samples into N executions using numpy.array_split (default: 1)")
-    p.add_argument("--dry-run", action="store_true",
-                   help="Resolve everything and print payloads without submitting")
-    p.add_argument("--verbose", action="store_true",
-                   help="Enable DEBUG logging")
-    p.add_argument("--log-level", choices=["DEBUG", "INFO", "WARNING", "ERROR"], default=None,
-                   help="Explicit log level (overrides --verbose)")
+    p.add_argument("--start-batch", type=int, default=1,
+                   help="Start execution from batch number (1-based, default: 1)")
+    p.add_argument("--end-batch", type=int, default=None,
+                   help="End execution at batch number (1-based, default: all batches)")
     return p.parse_args()
 
 # -------------------------
 # Logging
 # -------------------------
-def setup_logging(args):
-    level = logging.INFO
-    if args.verbose:
-        level = logging.DEBUG
-    if args.log_level:
-        level = getattr(logging, args.log_level)
-    logging.basicConfig(level=level, format="%(asctime)s | %(levelname)-8s | %(message)s")
+def setup_logging():
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-8s | %(message)s")
 
 # -------------------------
 # CLIP pipeline settings
@@ -165,11 +158,15 @@ def build_data_params_from_execution(execution: Dict, file_map: Dict[str, str]) 
 # -------------------------
 # Client-side filter (sample_name glob)
 # -------------------------
-def filter_by_sample_name(samples: List[Dict], glob_expr: str | None) -> List[Dict]:
-    if not glob_expr:
+def filter_by_sample_name(samples: List[Dict], regex_expr: str | None) -> List[Dict]:
+    if not regex_expr:
         return samples
-    matched = [s for s in samples if fnmatch.fnmatch((s.get("name") or ""), glob_expr)]
-    logging.info("Filter sample_name=%r matched %d / %d samples", glob_expr, len(matched), len(samples))
+    try:
+        pattern = re.compile(regex_expr)
+    except re.error as e:
+        raise SystemExit(f"Invalid regex for sample_name: {e}")
+    matched = [s for s in samples if pattern.search((s.get("name") or ""))]
+    logging.info("Filter sample_name=%r matched %d / %d samples", regex_expr, len(matched), len(samples))
     return matched
 
 # -------------------------
@@ -177,7 +174,7 @@ def filter_by_sample_name(samples: List[Dict], glob_expr: str | None) -> List[Di
 # -------------------------
 def main():
     args = parse_args()
-    setup_logging(args)
+    setup_logging()
 
     project_id = args.project_id
 
@@ -228,9 +225,23 @@ def main():
     chunks = [list(chunk) for chunk in np.array_split(np.array(selected, dtype=object), n_chunks)]
     logging.info("Prepared %d execution batch(es)", len(chunks))
 
-    # Build and submit one execution per chunk
+    # Determine which batches to execute
+    start_batch = max(1, args.start_batch)
+    end_batch = args.end_batch if args.end_batch is not None else len(chunks)
+    end_batch = min(end_batch, len(chunks))
+    
+    if start_batch > len(chunks):
+        raise SystemExit(f"Start batch {start_batch} exceeds total batches {len(chunks)}")
+    
+    logging.info("Will execute batches %d to %d (out of %d total batches)", start_batch, end_batch, len(chunks))
+
+    # Build and submit one execution per chunk in the specified range
     run_urls = []
     for i, chunk in enumerate(chunks, start=1):
+        # Skip batches outside the specified range
+        if i < start_batch or i > end_batch:
+            logging.info("Skipping batch %d (not in range %d-%d)", i, start_batch, end_batch)
+            continue
         rows = [{
             "sample": s["id"],
             "values": {
@@ -256,11 +267,6 @@ def main():
             "resequence_samples": False,
         }
 
-        if args.dry_run:
-            logging.info("DRY RUN: Batch %d/%d: %d samples", i, len(chunks), len(chunk))
-            for s in chunk[:10]:
-                logging.info("  %s | id=%s", s.get("name", ""), s.get("id", ""))
-            continue
 
         if i == 1:
             proceed = input("Submit? (y/n): ").strip().lower()
@@ -282,8 +288,6 @@ def main():
         run_urls.append(url)
         print(url)
 
-    if args.dry_run:
-        logging.info("DRY RUN complete: %d batch(es) prepared.", len(chunks))
 
 if __name__ == "__main__":
     try:
