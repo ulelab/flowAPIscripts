@@ -6,37 +6,31 @@ import sys
 from typing import Dict, List, Tuple
 import requests
 import numpy as np
-import fnmatch
+import re
+from flowbio import Client
 
 # -------------------------
-# CLI Usage - python3 ./flowRNAanalysis.py --pid ######### --filter sample_name "*A" -n #ofbatches
+# CLI Usage - python3 ./flowRNAanalysis.py --pid ######### --filter sample_name 'STAU2_HepG2.*$' -n #ofbatches --start-batch 1 --end-batch 10
 # -------------------------
 def parse_args():
     p = argparse.ArgumentParser(description="Run Flow.bio RNA-seq analysis (fetch + client-side filter by sample name)")
     p.add_argument("--pid", "--PID", dest="project_id", required=True,
                    help="Flow.bio Project ID (string)")
     p.add_argument("--filter", nargs=2, metavar=("KEY", "VALUE"), default=None,
-                   help='Metadata filter. Supported now: --filter sample_name "*A"')
+                   help='Metadata filter. Supported now: --filter sample_name "<regex>"')
     p.add_argument("-n", "--num-chunks", type=int, default=1,
                    help="Split selected samples into N executions using numpy.array_split (default: 1)")
-    p.add_argument("--dry-run", action="store_true",
-                   help="Resolve everything and print payloads without submitting")
-    p.add_argument("--verbose", action="store_true",
-                   help="Enable DEBUG logging")
-    p.add_argument("--log-level", choices=["DEBUG", "INFO", "WARNING", "ERROR"], default=None,
-                   help="Explicit log level (overrides --verbose)")
+    p.add_argument("--start-batch", type=int, default=1,
+                   help="Start execution from batch number (1-based, default: 1)")
+    p.add_argument("--end-batch", type=int, default=None,
+                   help="End execution at batch number (1-based, default: all batches)")
     return p.parse_args()
 
 # -------------------------
 # Logging
 # -------------------------
-def setup_logging(args):
-    level = logging.INFO
-    if args.verbose:
-        level = logging.DEBUG
-    if args.log_level:
-        level = getattr(logging, args.log_level)
-    logging.basicConfig(level=level, format="%(asctime)s | %(levelname)-8s | %(message)s")
+def setup_logging():
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-8s | %(message)s")
 
 # -------------------------
 # CLIP pipeline settings
@@ -96,15 +90,6 @@ def fetch_all_project_samples(session: requests.Session, token: str, project_id:
     logging.info("Fetched %d samples from project %s", len(collected), project_id)
     return collected
 
-def resolve_pipeline_version_id(session: requests.Session, token: str, pipeline_id: str, version_label: str) -> str:
-    headers = {"Authorization": f"Bearer {token}"}
-    r = session.get(f"{API_BASE}/pipelines/{pipeline_id}", headers=headers, timeout=30)
-    _raise_for_status(r)
-    pipeline = r.json()
-    match = next((v for v in pipeline.get("versions", []) if v.get("name") == version_label), None)
-    if not match:
-        raise RuntimeError(f"Version {version_label!r} not found on pipeline {pipeline_id}")
-    return match["id"]
 
 def fetch_prep_execution(session: requests.Session, token: str, prep_execution_id: str) -> Dict:
     headers = {"Authorization": f"Bearer {token}"}
@@ -158,11 +143,15 @@ def build_data_params_from_execution(execution: Dict, file_map: Dict[str, str]) 
 # -------------------------
 # Client-side filter (sample_name glob)
 # -------------------------
-def filter_by_sample_name(samples: List[Dict], glob_expr: str | None) -> List[Dict]:
-    if not glob_expr:
+def filter_by_sample_name(samples: List[Dict], regex_expr: str | None) -> List[Dict]:
+    if not regex_expr:
         return samples
-    matched = [s for s in samples if fnmatch.fnmatch((s.get("name") or ""), glob_expr)]
-    logging.info("Filter sample_name=%r matched %d / %d samples", glob_expr, len(matched), len(samples))
+    try:
+        pattern = re.compile(regex_expr)
+    except re.error as e:
+        raise SystemExit(f"Invalid regex for sample_name: {e}")
+    matched = [s for s in samples if pattern.search((s.get("name") or ""))]
+    logging.info("Filter sample_name=%r matched %d / %d samples", regex_expr, len(matched), len(samples))
     return matched
 
 # -------------------------
@@ -170,43 +159,39 @@ def filter_by_sample_name(samples: List[Dict], glob_expr: str | None) -> List[Di
 # -------------------------
 def main():
     args = parse_args()
-    setup_logging(args)
+    setup_logging()
 
     project_id = args.project_id
 
     # RNA pipeline settings
     prep_execution_id = PIPELINE_RNA["prep_execution_id"]
-    pipeline_id       = PIPELINE_RNA["pipeline_id"]
-    pipeline_version  = PIPELINE_RNA["pipeline_version"]
+    pipeline_name = "RNA-Seq"  # Using standard RNA-Seq pipeline name
+    pipeline_version = PIPELINE_RNA["pipeline_version"]
+    nextflow_version = "24.04.2"
 
-    # HTTP session & auth
+    # Initialize flowbio client (for submission only)
+    client = Client()
+
+    # REST session & auth for discovery endpoints
     session = requests.Session()
     token = login(session)
-    headers = {"Authorization": f"Bearer {token}"}
 
-    # Resolve pipeline version ID
-    version_id = resolve_pipeline_version_id(session, token, pipeline_id, pipeline_version)
-    logging.debug("Resolved pipeline version id=%s for label=%s", version_id, pipeline_version)
-
-    # Prep execution & reference files
+    # Prep execution & reference files via REST
     ex = fetch_prep_execution(session, token, prep_execution_id)
-    fileset_id = (ex.get("fileset") or {}).get("id")
-    if not fileset_id:
-        raise RuntimeError("Prep execution has no fileset id")
     data_params = build_data_params_from_execution(ex, FILE_MAP)
 
-    # Fetch all samples for the project (no TSV), then client-side filter by sample name glob
+    # Fetch all samples for the project via REST
     project_samples = fetch_all_project_samples(session, token, project_id, page_size=100)
 
-    # parse --filter
-    name_glob = None
+    # Parse --filter
+    name_regex = None
     if args.filter:
         key, value = args.filter
         if key.lower() != "sample_name":
-            raise SystemExit("Only --filter sample_name \"<glob>\" is supported in this iteration.")
-        name_glob = value
+            raise SystemExit("Only --filter sample_name \"<regex>\" is supported in this iteration.")
+        name_regex = value
 
-    selected = filter_by_sample_name(project_samples, name_glob)
+    selected = filter_by_sample_name(project_samples, name_regex)
 
     # Print filtered list
     print(f"\nFiltered {len(selected)} samples:")
@@ -221,83 +206,83 @@ def main():
     chunks = [list(chunk) for chunk in np.array_split(np.array(selected, dtype=object), n_chunks)]
     logging.info("Prepared %d execution batch(es)", len(chunks))
 
-    # Build and submit one execution per chunk
+    # Determine which batches to execute
+    start_batch = max(1, args.start_batch)
+    end_batch = args.end_batch if args.end_batch is not None else len(chunks)
+    end_batch = min(end_batch, len(chunks))
+    
+    if start_batch > len(chunks):
+        raise SystemExit(f"Start batch {start_batch} exceeds total batches {len(chunks)}")
+    
+    logging.info("Will execute batches %d to %d (out of %d total batches)", start_batch, end_batch, len(chunks))
+
+    # Build and submit one execution per chunk in the specified range
     run_urls = []
     for i, chunk in enumerate(chunks, start=1):
-        rows = [{
-            "sample": s["id"],
-            "values": {
+        # Skip batches outside the specified range
+        if i < start_batch or i > end_batch:
+            logging.info("Skipping batch %d (not in range %d-%d)", i, start_batch, end_batch)
+            continue
+        # Build sample_params in the format expected by flowbio
+        sample_params = {}
+        for s in chunk:
+            sample_params[s["id"]] = {
                 "group": s.get("name", ""),
                 "replicate": "1",
             }
-        } for s in chunk]
 
-        payload = {
-            "params": {
-                # UMI
-                "with_umi": "true",
-                "umitools_extract_method": "regex",
-                "umitools_bc_pattern": "^(?P<discard_1>.{4})(?P<umi_1>.{5})",
-                "skip_umi_extract": "false",
-                "umitools_dedup_stats": "false",
-                "save_umi_intermeds": "false",
+        # Pipeline parameters (RNA-seq specific)
+        params = {
+            # UMI
+            "with_umi": "true",
+            "umitools_extract_method": "regex",
+            "umitools_bc_pattern": "^(?P<discard_1>.{4})(?P<umi_1>.{5})",
+            "skip_umi_extract": "false",
+            "umitools_dedup_stats": "false",
+            "save_umi_intermeds": "false",
 
-                # Annotation/grouping
-                "gencode": "false",
-                "gtf_extra_attributes": "gene_name",
-                "gtf_group_features": "gene_id",
-                "featurecounts_group_type": "gene_biotype",
-                "featurecounts_feature_type": "exon",
+            # Annotation/grouping
+            "gencode": "false",
+            "gtf_extra_attributes": "gene_name",
+            "gtf_group_features": "gene_id",
+            "featurecounts_group_type": "gene_biotype",
+            "featurecounts_feature_type": "exon",
 
-                # Align/quant
-                "aligner": "star_salmon",
-                "pseudo_aligner": "",
-                "bam_csi_index": "false",
-                "star_ignore_sjdbgtf": "false",
-                "stringtie_ignore_gtf": "false",
-                "save_unaligned": "false",
-                "save_align_intermeds": "false",
-                "skip_markduplicates": "false",
-                "skip_alignment": "false",
-                "skip_pseudo_alignment": "false",
+            # Align/quant
+            "aligner": "star_salmon",
+            "pseudo_aligner": "",
+            "bam_csi_index": "false",
+            "star_ignore_sjdbgtf": "false",
+            "stringtie_ignore_gtf": "false",
+            "save_unaligned": "false",
+            "save_align_intermeds": "false",
+            "skip_markduplicates": "false",
+            "skip_alignment": "false",
+            "skip_pseudo_alignment": "false",
 
-                # Trimming
-                "trimmer": "trimgalore",
-                "skip_trimming": "false",
-                "save_trimmed": "false",
+            # Trimming
+            "trimmer": "trimgalore",
+            "skip_trimming": "false",
+            "save_trimmed": "false",
 
-                # rRNA options
-                "remove_ribo_rna": "false",
-                "ribo_database_manifest": "./assets/rrna-db-defaults.txt",
-                "save_non_ribo_reads": "false",
+            # rRNA options
+            "remove_ribo_rna": "false",
+            "ribo_database_manifest": "./assets/rrna-db-defaults.txt",
+            "save_non_ribo_reads": "false",
 
-                # QC
-                "deseq2_vst": "true",
-                "skip_bigwig": "false",
-                "skip_stringtie": "false",
-                "skip_fastqc": "false",
-                "skip_preseq": "true",
-                "skip_qualimap": "false",
-                "skip_rseqc": "false",
-                "skip_biotype_qc": "false",
-                "skip_deseq2_qc": "false",
-                "skip_multiqc": "false",
-                "skip_qc": "false",
-            },
-            # File/data bindings are provided via data_params (from FILE_MAP)
-            "data_params": data_params,
-            "csv_params": {"samplesheet": {"rows": rows, "paired": "both"}},
-            "retries": None,
-            "nextflow_version": "24.04.2",
-            "fileset": fileset_id,
-            "resequence_samples": False,
+            # QC
+            "deseq2_vst": "true",
+            "skip_bigwig": "false",
+            "skip_stringtie": "false",
+            "skip_fastqc": "false",
+            "skip_preseq": "true",
+            "skip_qualimap": "false",
+            "skip_rseqc": "false",
+            "skip_biotype_qc": "false",
+            "skip_deseq2_qc": "false",
+            "skip_multiqc": "false",
+            "skip_qc": "false",
         }
-
-        if args.dry_run:
-            logging.info("DRY RUN: Batch %d/%d: %d samples", i, len(chunks), len(chunk))
-            for s in chunk[:10]:
-                logging.info("  %s | id=%s", s.get("name", ""), s.get("id", ""))
-            continue
 
         if i == 1:
             proceed = input("Submit? (y/n): ").strip().lower()
@@ -305,22 +290,30 @@ def main():
                 logging.info("Aborted by user.")
                 sys.exit(0)
 
-        r = session.post(
-            f"{API_BASE}/pipelines/versions/{version_id}/run",
-            headers=headers,
-            json=payload,
-            timeout=60,
-        )
-        _raise_for_status(r)
-        run_id = r.json().get("id")
-        if not run_id:
-            raise RuntimeError(f"Submission succeeded but no run id in response: {r.text}")
-        url = f"https://app.flow.bio/executions/{run_id}"
-        run_urls.append(url)
-        print(url)
+        try:
+            # Use flowbio client to run pipeline
+            execution = client.run_pipeline(
+                name=pipeline_name,
+                version=pipeline_version,
+                nextflow_version=nextflow_version,
+                params=params,
+                data_params=data_params,
+                sample_params={"samples": sample_params}
+            )
+            
+            run_id = execution.get("id")
+            if not run_id:
+                raise RuntimeError(f"Submission succeeded but no run id in response: {execution}")
+            
+            url = f"https://app.flow.bio/executions/{run_id}"
+            run_urls.append(url)
+            print(f"Batch {i}: {url}")
+            
+        except Exception as e:
+            logging.error("Failed to submit batch %d: %s", i, e)
+            continue
 
-    if args.dry_run:
-        logging.info("DRY RUN complete: %d batch(es) prepared.", len(chunks))
+    logging.info("Completed submission of %d batches", len(run_urls))
 
 if __name__ == "__main__":
     try:
