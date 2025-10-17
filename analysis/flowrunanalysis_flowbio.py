@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 import argparse
-import getpass
 import logging
 import sys
 from typing import Dict, List, Tuple
-import requests
 import numpy as np
 import re
+from flowbio import Client
+import requests
+import getpass
 
 # -------------------------
-# CLI Usage - python3 ./flowrunanalysis.py --pid ######### --filter sample_name 'STAU2_HepG2.*$' -n #ofbatches --start-batch 1 --end-batch 10
+# CLI Usage - python3 ./flowrunanalysis_flowbio.py --pid ######### --filter sample_name 'STAU2_HepG2.*$' -n #ofbatches --start-batch 1 --end-batch 10
 # -------------------------
 def parse_args():
-    p = argparse.ArgumentParser(description="Run Flow.bio CLIP analysis (fetch + client-side filter by sample name)")
+    p = argparse.ArgumentParser(description="Run Flow.bio CLIP analysis using flowbio library (fetch + client-side filter by sample name)")
     p.add_argument("--pid", "--PID", dest="project_id", required=True,
                    help="Flow.bio Project ID (string)")
     p.add_argument("--filter", nargs=2, metavar=("KEY", "VALUE"), default=None,
@@ -36,74 +37,10 @@ def setup_logging():
 # -------------------------
 PIPELINE_CLIP = {
     "prep_execution_id": "602442133516131481",
-    "pipeline_id":       "960154035051242353",
-    "pipeline_version":  "1.7",
+    "pipeline_name": "CLIP-Seq",
+    "pipeline_version": "1.7",
+    "nextflow_version": "24.04.2",
 }
-
-# -------------------------
-# HTTP helpers
-# -------------------------
-API_BASE = "https://api.flow.bio"
-
-def login(session: requests.Session) -> str:
-    username = input("Enter your username: ")
-    password = getpass.getpass("Enter your password: ")
-    r = session.post(f"{API_BASE}/login", json={"username": username, "password": password}, timeout=30)
-    _raise_for_status(r)
-    data = r.json()
-    if "token" not in data:
-        raise RuntimeError("Invalid username or password (no token in response)")
-    return data["token"]
-
-def _raise_for_status(resp: requests.Response):
-    try:
-        resp.raise_for_status()
-    except requests.HTTPError as e:
-        msg = f"HTTP {resp.status_code} error: {resp.text}"
-        raise requests.HTTPError(msg) from e
-
-# -------------------------
-# Flow.bio queries
-# -------------------------
-def fetch_all_project_samples(session: requests.Session, token: str, project_id: str, page_size: int = 100) -> List[Dict]:
-    headers = {"Authorization": f"Bearer {token}"}
-    page = 1
-    collected: List[Dict] = []
-    while True:
-        logging.debug("Fetching project samples page=%d count=%d", page, page_size)
-        r = session.get(
-            f"{API_BASE}/projects/{project_id}/samples",
-            params={"page": page, "count": page_size},
-            headers=headers,
-            timeout=30,
-        )
-        _raise_for_status(r)
-        payload = r.json()
-        samples = payload.get("samples", [])
-        if not samples:
-            break
-        collected.extend(samples)
-        if len(samples) < page_size:
-            break
-        page += 1
-    logging.info("Fetched %d samples from project %s", len(collected), project_id)
-    return collected
-
-def resolve_pipeline_version_id(session: requests.Session, token: str, pipeline_id: str, version_label: str) -> str:
-    headers = {"Authorization": f"Bearer {token}"}
-    r = session.get(f"{API_BASE}/pipelines/{pipeline_id}", headers=headers, timeout=30)
-    _raise_for_status(r)
-    pipeline = r.json()
-    match = next((v for v in pipeline.get("versions", []) if v.get("name") == version_label), None)
-    if not match:
-        raise RuntimeError(f"Version {version_label!r} not found on pipeline {pipeline_id}")
-    return match["id"]
-
-def fetch_prep_execution(session: requests.Session, token: str, prep_execution_id: str) -> Dict:
-    headers = {"Authorization": f"Bearer {token}"}
-    r = session.get(f"{API_BASE}/executions/{prep_execution_id}", headers=headers, timeout=30)
-    _raise_for_status(r)
-    return r.json()
 
 # -------------------------
 # File binding
@@ -132,16 +69,46 @@ FILE_MAP = {
     "regions_resolved_gtf_genic": "Homo_sapiens_filtered_regions_genicOthertrue.resolved.gtf",
 }
 
+# -------------------------
+# REST helpers for data discovery (prep execution and samples)
+# -------------------------
+API_BASE = "https://api.flow.bio"
+
+def _raise_for_status(resp: requests.Response):
+    try:
+        resp.raise_for_status()
+    except requests.HTTPError as e:
+        msg = f"HTTP {resp.status_code} error: {resp.text}"
+        raise requests.HTTPError(msg) from e
+
+def rest_login(session: requests.Session) -> str:
+    username = input("Enter your username: ")
+    password = getpass.getpass("Enter your password: ")
+    r = session.post(f"{API_BASE}/login", json={"username": username, "password": password}, timeout=30)
+    _raise_for_status(r)
+    data = r.json()
+    if "token" not in data:
+        raise RuntimeError("Invalid username or password (no token in response)")
+    return data["token"]
+
+def fetch_prep_execution(session: requests.Session, token: str, prep_execution_id: str) -> Dict:
+    headers = {"Authorization": f"Bearer {token}"}
+    r = session.get(f"{API_BASE}/executions/{prep_execution_id}", headers=headers, timeout=30)
+    _raise_for_status(r)
+    return r.json()
+
 def build_data_params_from_execution(execution: Dict, file_map: Dict[str, str]) -> Dict[str, str]:
     inputs = list((execution.get("data_params") or {}).values())
     all_files = inputs[:]
     for proc_ex in execution.get("process_executions", []):
         all_files.extend(proc_ex.get("downstream_data", []))
+
     idx: Dict[str, Dict] = {}
     for f in all_files:
         fn = f.get("filename")
         if fn and fn not in idx:
             idx[fn] = f
+
     missing: List[Tuple[str, str]] = []
     data_params: Dict[str, str] = {}
     for param_name, expected_filename in file_map.items():
@@ -155,8 +122,32 @@ def build_data_params_from_execution(execution: Dict, file_map: Dict[str, str]) 
         raise RuntimeError(f"Missing required reference files:\n{msg}")
     return data_params
 
+def fetch_all_project_samples(session: requests.Session, token: str, project_id: str, page_size: int = 100) -> List[Dict]:
+    headers = {"Authorization": f"Bearer {token}"}
+    page = 1
+    collected: List[Dict] = []
+    while True:
+        logging.debug("Fetching project samples page=%d count=%d", page, page_size)
+        r = session.get(
+            f"{API_BASE}/projects/{project_id}/samples",
+            params={"page": page, "count": page_size},
+            headers=headers,
+            timeout=30,
+        )
+        _raise_for_status(r)
+        payload = r.json()
+        samples = payload.get("samples", [])
+        if not samples:
+            break
+        collected.extend(samples)
+        if len(samples) < page_size:
+            break
+        page += 1
+    logging.info("Fetched %d samples from project %s", len(collected), project_id)
+    return collected
+
 # -------------------------
-# Client-side filter (sample_name glob)
+# Client-side filter (sample_name regex)
 # -------------------------
 def filter_by_sample_name(samples: List[Dict], regex_expr: str | None) -> List[Dict]:
     if not regex_expr:
@@ -180,37 +171,33 @@ def main():
 
     # CLIP pipeline settings
     prep_execution_id = PIPELINE_CLIP["prep_execution_id"]
-    pipeline_id       = PIPELINE_CLIP["pipeline_id"]
-    pipeline_version  = PIPELINE_CLIP["pipeline_version"]
+    pipeline_name = PIPELINE_CLIP["pipeline_name"]
+    pipeline_version = PIPELINE_CLIP["pipeline_version"]
+    nextflow_version = PIPELINE_CLIP["nextflow_version"]
 
-    # HTTP session & auth
+    # Initialize flowbio client (for submission only)
+    client = Client()
+
+    # REST session & auth for discovery endpoints
     session = requests.Session()
-    token = login(session)
-    headers = {"Authorization": f"Bearer {token}"}
+    token = rest_login(session)
 
-    # Resolve pipeline version ID
-    version_id = resolve_pipeline_version_id(session, token, pipeline_id, pipeline_version)
-    logging.debug("Resolved pipeline version id=%s for label=%s", version_id, pipeline_version)
-
-    # Prep execution & reference files
+    # Prep execution & reference files via REST
     ex = fetch_prep_execution(session, token, prep_execution_id)
-    fileset_id = (ex.get("fileset") or {}).get("id")
-    if not fileset_id:
-        raise RuntimeError("Prep execution has no fileset id")
     data_params = build_data_params_from_execution(ex, FILE_MAP)
 
-    # Fetch all samples for the project (no TSV), then client-side filter by sample name glob
+    # Fetch all samples for the project via REST
     project_samples = fetch_all_project_samples(session, token, project_id, page_size=100)
 
-    # parse --filter
-    name_glob = None
+    # Parse --filter
+    name_regex = None
     if args.filter:
         key, value = args.filter
         if key.lower() != "sample_name":
-            raise SystemExit("Only --filter sample_name \"<glob>\" is supported in this iteration.")
-        name_glob = value
+            raise SystemExit("Only --filter sample_name \"<regex>\" is supported in this iteration.")
+        name_regex = value
 
-    selected = filter_by_sample_name(project_samples, name_glob)
+    selected = filter_by_sample_name(project_samples, name_regex)
 
     # Print filtered list
     print(f"\nFiltered {len(selected)} samples:")
@@ -242,31 +229,24 @@ def main():
         if i < start_batch or i > end_batch:
             logging.info("Skipping batch %d (not in range %d-%d)", i, start_batch, end_batch)
             continue
-        rows = [{
-            "sample": s["id"],
-            "values": {
+
+        # Build sample_params in the format expected by flowbio
+        sample_params = {}
+        for s in chunk:
+            sample_params[s["id"]] = {
                 "group": s.get("name", ""),
                 "replicate": "1",
             }
-        } for s in chunk]
 
-        payload = {
-            "params": {
-                "move_umi_to_header": "false",
-                #"umi_header_format": "NNN",
-                "umi_separator": "rbc:",
-                "skip_umi_dedupe": "false",
-                "crosslink_position": "start",
-                "encode_eclip": "true",
-            },
-            "data_params": data_params,
-            "csv_params": {"samplesheet": {"rows": rows, "paired": "both"}},
-            "retries": None,
-            "nextflow_version": "24.04.2",
-            "fileset": fileset_id,
-            "resequence_samples": False,
+        # Pipeline parameters
+        params = {
+            "move_umi_to_header": "false",
+            "umi_header_format": "NNN",
+            "umi_separator": "RX:Z:",
+            "skip_umi_dedupe": "false",
+            "crosslink_position": "start",
+            "encode_eclip": "false",
         }
-
 
         if i == 1:
             proceed = input("Submit? (y/n): ").strip().lower()
@@ -274,20 +254,30 @@ def main():
                 logging.info("Aborted by user.")
                 sys.exit(0)
 
-        r = session.post(
-            f"{API_BASE}/pipelines/versions/{version_id}/run",
-            headers=headers,
-            json=payload,
-            timeout=60,
-        )
-        _raise_for_status(r)
-        run_id = r.json().get("id")
-        if not run_id:
-            raise RuntimeError(f"Submission succeeded but no run id in response: {r.text}")
-        url = f"https://app.flow.bio/executions/{run_id}"
-        run_urls.append(url)
-        print(url)
+        try:
+            # Use flowbio client to run pipeline
+            execution = client.run_pipeline(
+                name=pipeline_name,
+                version=pipeline_version,
+                nextflow_version=nextflow_version,
+                params=params,
+                data_params=data_params,
+                sample_params={"samples": sample_params}
+            )
+            
+            run_id = execution.get("id")
+            if not run_id:
+                raise RuntimeError(f"Submission succeeded but no run id in response: {execution}")
+            
+            url = f"https://app.flow.bio/executions/{run_id}"
+            run_urls.append(url)
+            print(f"Batch {i}: {url}")
+            
+        except Exception as e:
+            logging.error("Failed to submit batch %d: %s", i, e)
+            continue
 
+    logging.info("Completed submission of %d batches", len(run_urls))
 
 if __name__ == "__main__":
     try:
