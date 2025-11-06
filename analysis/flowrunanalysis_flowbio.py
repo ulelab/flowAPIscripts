@@ -5,7 +5,6 @@ import sys
 from typing import Dict, List, Tuple
 import numpy as np
 import re
-from flowbio import Client
 import requests
 import getpass
 
@@ -24,6 +23,8 @@ def parse_args():
                    help="Start execution from batch number (1-based, default: 1)")
     p.add_argument("--end-batch", type=int, default=None,
                    help="End execution at batch number (1-based, default: all batches)")
+    p.add_argument("--limit", type=str, default=None,
+                   help="Limit samples after filtering. Use 'N' for first N samples, or 'M-N' for range (e.g., '15-37'). Default: no limit")
     return p.parse_args()
 
 # -------------------------
@@ -37,6 +38,7 @@ def setup_logging():
 # -------------------------
 PIPELINE_CLIP = {
     "prep_execution_id": "602442133516131481",
+    "pipeline_id": "960154035051242353",
     "pipeline_name": "CLIP-Seq",
     "pipeline_version": "1.7",
     "nextflow_version": "24.04.2",
@@ -90,6 +92,16 @@ def rest_login(session: requests.Session) -> str:
     if "token" not in data:
         raise RuntimeError("Invalid username or password (no token in response)")
     return data["token"]
+
+def resolve_pipeline_version_id(session: requests.Session, token: str, pipeline_id: str, version_label: str) -> str:
+    headers = {"Authorization": f"Bearer {token}"}
+    r = session.get(f"{API_BASE}/pipelines/{pipeline_id}", headers=headers, timeout=30)
+    _raise_for_status(r)
+    pipeline = r.json()
+    match = next((v for v in pipeline.get("versions", []) if v.get("name") == version_label), None)
+    if not match:
+        raise RuntimeError(f"Version {version_label!r} not found on pipeline {pipeline_id}")
+    return match["id"]
 
 def fetch_prep_execution(session: requests.Session, token: str, prep_execution_id: str) -> Dict:
     headers = {"Authorization": f"Bearer {token}"}
@@ -147,6 +159,41 @@ def fetch_all_project_samples(session: requests.Session, token: str, project_id:
     return collected
 
 # -------------------------
+# Limit parsing
+# -------------------------
+def parse_limit(limit_str: str | None) -> Tuple[int | None, int | None]:
+    """
+    Parse limit string into start and end indices (0-based).
+    Returns (start, end) where end is exclusive.
+    Examples:
+    - "14" -> (0, 14)  # first 14 samples
+    - "15-37" -> (14, 37)  # samples 15-37 (1-based becomes 0-based)
+    """
+    if not limit_str:
+        return None, None
+    
+    if '-' in limit_str:
+        # Range format: M-N
+        try:
+            start_str, end_str = limit_str.split('-', 1)
+            start = int(start_str.strip()) - 1  # Convert to 0-based
+            end = int(end_str.strip())  # Keep as 1-based for end
+            if start < 0 or end <= start:
+                raise ValueError("Invalid range: start must be >= 1 and end must be > start")
+            return start, end
+        except ValueError as e:
+            raise SystemExit(f"Invalid range format '{limit_str}': {e}. Use format like '15-37'")
+    else:
+        # Single number format: N (first N samples)
+        try:
+            count = int(limit_str.strip())
+            if count <= 0:
+                raise ValueError("Count must be > 0")
+            return 0, count
+        except ValueError as e:
+            raise SystemExit(f"Invalid limit format '{limit_str}': {e}. Use format like '14' or '15-37'")
+
+# -------------------------
 # Client-side filter (sample_name regex)
 # -------------------------
 def filter_by_sample_name(samples: List[Dict], regex_expr: str | None) -> List[Dict]:
@@ -171,19 +218,25 @@ def main():
 
     # CLIP pipeline settings
     prep_execution_id = PIPELINE_CLIP["prep_execution_id"]
+    pipeline_id = PIPELINE_CLIP["pipeline_id"]
     pipeline_name = PIPELINE_CLIP["pipeline_name"]
     pipeline_version = PIPELINE_CLIP["pipeline_version"]
     nextflow_version = PIPELINE_CLIP["nextflow_version"]
 
-    # Initialize flowbio client (for submission only)
-    client = Client()
-
-    # REST session & auth for discovery endpoints
+    # REST session & auth
     session = requests.Session()
     token = rest_login(session)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Resolve pipeline version ID
+    version_id = resolve_pipeline_version_id(session, token, pipeline_id, pipeline_version)
+    logging.info("Resolved pipeline version id=%s for label=%s", version_id, pipeline_version)
 
     # Prep execution & reference files via REST
     ex = fetch_prep_execution(session, token, prep_execution_id)
+    fileset_id = (ex.get("fileset") or {}).get("id")
+    if not fileset_id:
+        raise RuntimeError("Prep execution has no fileset id")
     data_params = build_data_params_from_execution(ex, FILE_MAP)
 
     # Fetch all samples for the project via REST
@@ -198,6 +251,28 @@ def main():
         name_regex = value
 
     selected = filter_by_sample_name(project_samples, name_regex)
+
+    # Apply limit if specified
+    if args.limit:
+        start_idx, end_idx = parse_limit(args.limit)
+        original_count = len(selected)
+        
+        if start_idx is not None and end_idx is not None:
+            # Validate range
+            if start_idx >= len(selected):
+                raise SystemExit(f"Start index {start_idx + 1} exceeds available samples ({len(selected)})")
+            if end_idx > len(selected):
+                logging.warning("End index %d exceeds available samples (%d), using all remaining samples", 
+                              end_idx, len(selected))
+                end_idx = len(selected)
+            
+            selected = selected[start_idx:end_idx]
+            
+            if start_idx == 0:
+                logging.info("Limited to first %d samples (from %d filtered samples)", len(selected), original_count)
+            else:
+                logging.info("Limited to samples %d-%d (%d samples from %d filtered samples)", 
+                           start_idx + 1, end_idx, len(selected), original_count)
 
     # Print filtered list
     print(f"\nFiltered {len(selected)} samples:")
@@ -230,23 +305,40 @@ def main():
             logging.info("Skipping batch %d (not in range %d-%d)", i, start_batch, end_batch)
             continue
 
-        # Build sample_params in the format expected by flowbio
-        sample_params = {}
-        for s in chunk:
-            sample_params[s["id"]] = {
+        # Build rows in the format expected by the pipeline
+        rows = [{
+            "sample": s["id"],
+            "values": {
                 "group": s.get("name", ""),
                 "replicate": "1",
             }
+        } for s in chunk]
 
         # Pipeline parameters
         params = {
             "move_umi_to_header": "false",
-            "umi_header_format": "NNN",
-            "umi_separator": "RX:Z:",
+            "umi_header_format": "NNNNNNNNNN",
+            "umi_separator": "rbc:",
             "skip_umi_dedupe": "false",
             "crosslink_position": "start",
             "encode_eclip": "false",
         }
+
+        # Build payload for REST API submission
+        payload = {
+            "params": params,
+            "data_params": data_params,
+            "csv_params": {"samplesheet": {"rows": rows, "paired": "both"}},
+            "retries": None,
+            "nextflow_version": nextflow_version,
+            "fileset": fileset_id,
+            "resequence_samples": False,
+        }
+        
+        # Log payload size for debugging
+        import json
+        payload_size = len(json.dumps(payload))
+        logging.info("Batch %d payload size: %d bytes (%d samples)", i, payload_size, len(rows))
 
         if i == 1:
             proceed = input("Submit? (y/n): ").strip().lower()
@@ -255,19 +347,32 @@ def main():
                 sys.exit(0)
 
         try:
-            # Use flowbio client to run pipeline
-            execution = client.run_pipeline(
-                name=pipeline_name,
-                version=pipeline_version,
-                nextflow_version=nextflow_version,
-                params=params,
-                data_params=data_params,
-                sample_params={"samples": sample_params}
-            )
+            # Use REST API to run pipeline with increased timeout and retry logic
+            max_retries = 3
+            timeout = 120  # Increased from 60 to 120 seconds
             
-            run_id = execution.get("id")
+            for attempt in range(max_retries):
+                try:
+                    logging.info("Submitting batch %d (attempt %d/%d)...", i, attempt + 1, max_retries)
+                    r = session.post(
+                        f"{API_BASE}/pipelines/versions/{version_id}/run",
+                        headers=headers,
+                        json=payload,
+                        timeout=timeout,
+                    )
+                    break  # Success, exit retry loop
+                except requests.exceptions.Timeout as e:
+                    if attempt < max_retries - 1:
+                        wait_time = (attempt + 1) * 30  # Exponential backoff: 30s, 60s, 90s
+                        logging.warning("Timeout on attempt %d, retrying in %d seconds...", attempt + 1, wait_time)
+                        import time
+                        time.sleep(wait_time)
+                    else:
+                        raise e
+            _raise_for_status(r)
+            run_id = r.json().get("id")
             if not run_id:
-                raise RuntimeError(f"Submission succeeded but no run id in response: {execution}")
+                raise RuntimeError(f"Submission succeeded but no run id in response: {r.text}")
             
             url = f"https://app.flow.bio/executions/{run_id}"
             run_urls.append(url)

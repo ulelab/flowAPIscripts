@@ -23,7 +23,7 @@ import flowbio
 import inspect  # optional; safe to keep
 
 
-PROJECT_ID = 229379887183914226
+PROJECT_ID = 923032851747533489
 INTERNAL_RETRIES = 5
 DEFAULT_CHUNK_SIZE = 1_000_000
 
