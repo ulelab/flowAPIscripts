@@ -167,8 +167,8 @@ ALLOWED_TSM: Dict[str, Set[str]] = {
     },
 }
 
-# Static credentials
-FLOWBIO_USERNAME = "Chromojones"
+# Static credentials (use with caution)
+FLOWBIO_USERNAME = "username"
 FLOWBIO_PASSWORD = "password"
 
 
