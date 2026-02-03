@@ -16,7 +16,7 @@ def parse_args():
     p.add_argument("--pid", "--PID", dest="project_id", required=True,
                    help="Flow.bio Project ID (string)")
     p.add_argument("--filter", nargs=2, metavar=("KEY", "VALUE"), default=None,
-                   help='Metadata filter. Supported now: --filter sample_name "<regex>"')
+                   help='Metadata filter. Supported: --filter sample_name "<regex>" or --filter comments "<text>"')
     p.add_argument("-n", "--num-chunks", type=int, default=1,
                    help="Split selected samples into N executions using numpy.array_split (default: 1)")
     p.add_argument("--start-batch", type=int, default=1,
@@ -134,7 +134,7 @@ def build_data_params_from_execution(execution: Dict, file_map: Dict[str, str]) 
         raise RuntimeError(f"Missing required reference files:\n{msg}")
     return data_params
 
-def fetch_all_project_samples(session: requests.Session, token: str, project_id: str, page_size: int = 100) -> List[Dict]:
+def fetch_all_project_samples(session: requests.Session, token: str, project_id: str, page_size: int = 100, fetch_details: bool = False) -> List[Dict]:
     headers = {"Authorization": f"Bearer {token}"}
     page = 1
     collected: List[Dict] = []
@@ -151,6 +151,25 @@ def fetch_all_project_samples(session: requests.Session, token: str, project_id:
         samples = payload.get("samples", [])
         if not samples:
             break
+        
+        # If fetch_details is True, get full sample details including metadata
+        if fetch_details:
+            for sample in samples:
+                sample_id = sample.get("id")
+                if sample_id:
+                    try:
+                        detail_r = session.get(
+                            f"{API_BASE}/samples/{sample_id}",
+                            headers=headers,
+                            timeout=30,
+                        )
+                        detail_r.raise_for_status()
+                        detail_data = detail_r.json()
+                        # Merge detail data into sample
+                        sample.update(detail_data)
+                    except Exception as e:
+                        logging.warning(f"Failed to fetch details for sample {sample_id}: {e}")
+        
         collected.extend(samples)
         if len(samples) < page_size:
             break
@@ -194,7 +213,7 @@ def parse_limit(limit_str: str | None) -> Tuple[int | None, int | None]:
             raise SystemExit(f"Invalid limit format '{limit_str}': {e}. Use format like '14' or '15-37'")
 
 # -------------------------
-# Client-side filter (sample_name regex)
+# Client-side filters
 # -------------------------
 def filter_by_sample_name(samples: List[Dict], regex_expr: str | None) -> List[Dict]:
     if not regex_expr:
@@ -205,6 +224,34 @@ def filter_by_sample_name(samples: List[Dict], regex_expr: str | None) -> List[D
         raise SystemExit(f"Invalid regex for sample_name: {e}")
     matched = [s for s in samples if pattern.search((s.get("name") or ""))]
     logging.info("Filter sample_name=%r matched %d / %d samples", regex_expr, len(matched), len(samples))
+    return matched
+
+def filter_by_comments(samples: List[Dict], search_text: str | None) -> List[Dict]:
+    """Filter samples where comments field contains search_text"""
+    if not search_text:
+        return samples
+    
+    matched = []
+    for s in samples:
+        # Check metadata field - comments is nested as metadata['comments']['value']
+        comments = None
+        metadata = s.get("metadata", {})
+        if isinstance(metadata, dict):
+            comments_obj = metadata.get("comments") or metadata.get("Comments")
+            if isinstance(comments_obj, dict):
+                comments = comments_obj.get("value")
+            elif isinstance(comments_obj, str):
+                comments = comments_obj
+        
+        # Try top-level comments field (fallback)
+        if not comments:
+            comments = s.get("comments") or s.get("Comments")
+        
+        # Check if comments contains the search text (case-insensitive)
+        if comments and search_text.lower() in str(comments).lower():
+            matched.append(s)
+    
+    logging.info("Filter comments containing '%s' matched %d / %d samples", search_text, len(matched), len(samples))
     return matched
 
 # -------------------------
@@ -239,18 +286,28 @@ def main():
         raise RuntimeError("Prep execution has no fileset id")
     data_params = build_data_params_from_execution(ex, FILE_MAP)
 
-    # Fetch all samples for the project via REST
-    project_samples = fetch_all_project_samples(session, token, project_id, page_size=100)
+    # Parse --filter to determine if we need full sample details
+    needs_details = False
+    filter_key = None
+    filter_value = None
+    if args.filter:
+        filter_key, filter_value = args.filter
+        if filter_key.lower() == "comments":
+            needs_details = True  # Comments are in full metadata, need to fetch details
+    
+    # Fetch all samples for the project via REST (with details if needed for filtering)
+    project_samples = fetch_all_project_samples(session, token, project_id, page_size=100, fetch_details=needs_details)
 
-    # Parse --filter
-    name_regex = None
+    # Apply filters
+    selected = project_samples
     if args.filter:
         key, value = args.filter
-        if key.lower() != "sample_name":
-            raise SystemExit("Only --filter sample_name \"<regex>\" is supported in this iteration.")
-        name_regex = value
-
-    selected = filter_by_sample_name(project_samples, name_regex)
+        if key.lower() == "sample_name":
+            selected = filter_by_sample_name(selected, value)
+        elif key.lower() == "comments":
+            selected = filter_by_comments(selected, value)
+        else:
+            raise SystemExit(f"Unsupported filter key: {key}. Supported: sample_name, comments")
 
     # Apply limit if specified
     if args.limit:
@@ -316,12 +373,13 @@ def main():
 
         # Pipeline parameters
         params = {
-            "move_umi_to_header": "false",
+            "move_umi_to_header": "true",
             "umi_header_format": "NNNNNNNNNN",
-            "umi_separator": "rbc:",
+            "umi_separator": "_",
             "skip_umi_dedupe": "false",
             "crosslink_position": "start",
             "encode_eclip": "false",
+            "star_params": "--outFilterMultimapNmax 100 --outFilterMultimapScoreRange 1 --outSAMattributes All --alignSJoverhangMin 8 --alignSJDBoverhangMin 1 --outFilterType BySJout --alignIntronMin 20 --alignIntronMax 1000000 --outFilterScoreMin 10 --alignEndsType Extend5pOfRead1 --twopassMode Basic --limitOutSJcollapsed 4000000",
         }
 
         # Build payload for REST API submission

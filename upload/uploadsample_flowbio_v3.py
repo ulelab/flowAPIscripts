@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Non-interactive Flow.bio sample upload script using flowbio library.
-Credentials are embedded directly; use only in trusted environments.
+Flow.bio sample upload script v3 - Simplified and improved version.
+Uses flowbio library with enhanced error handling and debugging.
+Supports single-end uploads with comprehensive metadata handling.
 """
 
 import argparse
@@ -59,6 +60,7 @@ RIBO_SEPARATION_METHOD_MAP: Dict[str, str] = {
     "other": "Other",
 }
 
+# GraphQL mutation for updating sample metadata
 UPDATE_SAMPLE_MUTATION = """
 mutation UpdateSample(
   $id: ID!,
@@ -126,7 +128,10 @@ mutation UpdateSample(
     umiBarcodeSequence: $umiBarcodeSequence,
     umiSeparator: $umiSeparator
   ) {
-    sample { id }
+    sample { 
+      id
+      name
+    }
   }
 }
 """
@@ -218,6 +223,7 @@ def _get_cell_str(row: Dict[str, Any], key: str) -> str:
 
 
 def _normalize_vocab(value: str, mapping: Dict[str, str]) -> str:
+    """Normalize vocabulary values using mapping dictionary."""
     v = (value or "").strip()
     if not v:
         return ""
@@ -237,6 +243,7 @@ def _normalize_vocab(value: str, mapping: Dict[str, str]) -> str:
 
 
 def _build_type_specific_metadata(row: Dict[str, Any], sample_type: str) -> Dict[str, Any]:
+    """Build type-specific metadata dictionary."""
     base: Dict[str, Any] = {
         "five_prime_barcode_sequence": _get_cell_str(row, "5' Barcode Sequence"),
         "three_prime_barcode_sequence": _get_cell_str(row, "3' Barcode Sequence"),
@@ -278,6 +285,7 @@ def _build_type_specific_metadata(row: Dict[str, Any], sample_type: str) -> Dict
 
 
 def _build_update_vars(sample_id: str, row: Dict[str, Any]) -> Dict[str, Any]:
+    """Build variables for GraphQL updateSample mutation."""
     alias_map = {
         "name": ["Sample Name", "name"],
         "organism": ["Organism", "organism"],
@@ -332,19 +340,61 @@ def _build_update_vars(sample_id: str, row: Dict[str, Any]) -> Dict[str, Any]:
     return {k: v for k, v in vars_out.items() if v not in ("", None)}
 
 
-def update_sample_metadata(client: Client, sample_id: str, row: Dict[str, Any]) -> None:
+def update_sample_metadata(client: Client, sample_id: str, row: Dict[str, Any], debug: bool = False) -> bool:
+    """
+    Update sample metadata using GraphQL mutation.
+    Returns True if successful, False otherwise.
+    """
     if not hasattr(client, "execute"):
-        return
+        if debug:
+            print(f"[DEBUG] Client does not have 'execute' method, skipping metadata update")
+        return False
+    
     variables = _build_update_vars(sample_id, row)
-    if len(variables) == 1:
-        return
+    if len(variables) == 1:  # Only 'id' present
+        if debug:
+            print(f"[DEBUG] No additional fields to update for sample {sample_id}")
+        return True
+    
+    if debug:
+        print(f"[DEBUG] Updating sample {sample_id} with variables: {json.dumps(variables, indent=2)}")
+    
     try:
-        client.execute(UPDATE_SAMPLE_MUTATION, variables=variables)
+        result = client.execute(UPDATE_SAMPLE_MUTATION, variables=variables)
+        
+        if debug:
+            print(f"[DEBUG] GraphQL updateSample response: {json.dumps(result, indent=2)}")
+        
+        # Check for errors in result
+        if result and "errors" in result:
+            print(f"[ERROR] GraphQL errors: {result['errors']}", file=sys.stderr)
+            return False
+        
+        # Check for successful update
+        if result and result.get("data", {}).get("updateSample"):
+            if debug:
+                print(f"[DEBUG] Successfully updated sample metadata")
+            return True
+        
+        # Also check direct updateSample for compatibility
+        if result and "updateSample" in result:
+            if debug:
+                print(f"[DEBUG] Successfully updated sample metadata (direct)")
+            return True
+        
+        if debug:
+            print(f"[WARN] Unexpected response structure: {result}")
+        return False
+        
     except Exception as exc:
-        print(f"[WARN] GraphQL updateSample failed for {sample_id}: {exc}", file=sys.stderr)
+        print(f"[ERROR] GraphQL updateSample failed for {sample_id}: {exc}", file=sys.stderr)
+        if debug:
+            import traceback
+            traceback.print_exc()
+        return False
 
 
-def build_metadata(row: Dict[str, Any], project_id: int) -> Dict[str, Any]:
+def build_metadata(row: Dict[str, Any], project_id: int, debug: bool = False) -> Dict[str, Any]:
     """Build upload metadata from TSV/Excel row for Flow.bio uploads."""
     sample_type = _get_cell_str(row, "Type") or DEFAULT_SAMPLE_TYPE
 
@@ -417,12 +467,24 @@ def build_metadata(row: Dict[str, Any], project_id: int) -> Dict[str, Any]:
     if type_specific:
         metadata["type_specific_metadata"] = json.dumps(type_specific)
 
+    # Determine if sample should be private
+    # Public samples require: sequencer and purificationTarget
+    has_sequencer = bool(metadata.get("sequencer"))
+    has_purification_target = bool(metadata.get("purificationTarget"))
+    
+    # Set private=True if required fields for public samples are missing
+    # This prevents API errors about insufficient metadata for public samples
+    if not (has_sequencer and has_purification_target):
+        metadata["private"] = True
+        if debug:
+            print(f"[DEBUG] Setting private=True (missing sequencer={not has_sequencer}, missing purificationTarget={not has_purification_target})")
+
     return {k: v for k, v in metadata.items() if v not in ("", None)}
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Non-interactive Flow.bio sample upload (Excel or TSV input)"
+        description="Flow.bio sample upload script v3 - Simplified with enhanced debugging"
     )
     parser.add_argument("file", help="Path to input file (.xlsx, .xls, .tsv, or .txt)")
     parser.add_argument("--sheet", default=0, help="Worksheet name or index for Excel files (default: 0)")
@@ -433,6 +495,7 @@ def main():
     parser.add_argument("--chunk-size", type=int, default=DEFAULT_CHUNK_SIZE,
                         help=f"Upload chunk size in bytes (default: {DEFAULT_CHUNK_SIZE:,})")
     parser.add_argument("--retries", type=int, default=5, help="Number of upload retries (default: 5)")
+    parser.add_argument("--debug", action="store_true", help="Enable debug output")
 
     args = parser.parse_args()
 
@@ -452,26 +515,35 @@ def main():
 
         df.columns = [str(c).strip() for c in df.columns]
         rows = df.to_dict(orient="records")
+        
+        if args.debug:
+            print(f"[DEBUG] Loaded {len(rows)} rows from {file_type_desc}")
+            print(f"[DEBUG] Columns: {list(df.columns)}")
+            
     except Exception as e:
         file_type = "Excel" if is_excel else "TSV"
-        print(f"Failed to read {file_type} file: {e}", file=sys.stderr)
+        print(f"[ERROR] Failed to read {file_type} file: {e}", file=sys.stderr)
         sys.exit(1)
 
     selected_rows = parse_rows(args.rows, len(rows))
     if not selected_rows:
-        print("No valid rows selected.", file=sys.stderr)
+        print("[ERROR] No valid rows selected.", file=sys.stderr)
         sys.exit(1)
 
     print(f"Processing {len(selected_rows)} rows from {file_type_desc}...")
 
+    # Initialize client
     client = Client()
     try:
+        if args.debug:
+            print(f"[DEBUG] Attempting login with username: {FLOWBIO_USERNAME}")
         client.login(FLOWBIO_USERNAME, FLOWBIO_PASSWORD)
+        print("✓ Successfully logged in to Flow.bio")
     except Exception as e:
-        print(f"Login failed: {e}", file=sys.stderr)
+        print(f"[ERROR] Login failed: {e}", file=sys.stderr)
         sys.exit(1)
 
-    print("Successfully logged in to Flow.bio")
+    # Ensure client has execute method for GraphQL
     if not hasattr(client, "execute"):
         for candidate in ("execute", "graphql", "gql"):
             func = getattr(client, candidate, None)
@@ -480,6 +552,8 @@ def main():
                 if candidate != "execute":
                     print(f"[DEBUG] Using client.{candidate} for GraphQL execution.")
                 break
+        else:
+            print("[WARN] Client does not have GraphQL execution method. Metadata updates will be skipped.", file=sys.stderr)
 
     successful_uploads = 0
     failed_uploads = 0
@@ -490,28 +564,43 @@ def main():
         sample_name = _get_cell_str(row, "Sample Name")
         file_path = _get_cell_str(row, "File")
 
+        if args.debug:
+            print(f"\n[DEBUG] Processing row {idx}")
+            print(f"[DEBUG] Sample name: {sample_name}")
+            print(f"[DEBUG] File path: {file_path}")
+
         if not sample_name:
-            print(f"Row {idx}: Missing sample name, skipping", file=sys.stderr)
+            print(f"[ERROR] Row {idx}: Missing sample name, skipping", file=sys.stderr)
             failed_uploads += 1
             continue
 
         if not file_path:
-            print(f"Row {idx} ({sample_name}): Missing file path, skipping", file=sys.stderr)
+            print(f"[ERROR] Row {idx} ({sample_name}): Missing file path, skipping", file=sys.stderr)
             failed_uploads += 1
             continue
 
         full_path = normalize_path(file_path, args.base_dir)
         if not os.path.exists(full_path):
-            print(f"Row {idx} ({sample_name}): File not found: {full_path}", file=sys.stderr)
+            print(f"[ERROR] Row {idx} ({sample_name}): File not found: {full_path}", file=sys.stderr)
             failed_uploads += 1
             continue
 
-        metadata = build_metadata(row, args.project_id)
+        metadata = build_metadata(row, args.project_id, debug=args.debug)
+
+        if args.debug:
+            print(f"[DEBUG] Built metadata: {json.dumps(metadata, indent=2)}")
 
         print(f"\nRow {idx}: Uploading '{sample_name}' from {full_path}")
-        print(f"Metadata: {json.dumps(metadata, indent=2)}")
 
         try:
+            if args.debug:
+                print(f"[DEBUG] Calling client.upload_sample with:")
+                print(f"[DEBUG]   sample_name: {sample_name}")
+                print(f"[DEBUG]   file_path: {full_path}")
+                print(f"[DEBUG]   chunk_size: {args.chunk_size}")
+                print(f"[DEBUG]   retries: {args.retries}")
+                print(f"[DEBUG] Metadata payload: {json.dumps(metadata, indent=2)}")
+            
             sample_flow = client.upload_sample(
                 sample_name,
                 full_path,
@@ -521,14 +610,35 @@ def main():
                 metadata=metadata,
             )
 
+            if args.debug:
+                print(f"[DEBUG] Upload response type: {type(sample_flow)}")
+                if isinstance(sample_flow, dict):
+                    print(f"[DEBUG] Upload response: {json.dumps(sample_flow, indent=2)}")
+                else:
+                    print(f"[DEBUG] Upload response attributes: {dir(sample_flow)}")
+
             sample_id = sample_flow.get("id") if isinstance(sample_flow, dict) else getattr(sample_flow, "id", None)
+            
+            if args.debug:
+                print(f"[DEBUG] Extracted sample_id: {sample_id}")
+
             if sample_id:
-                update_sample_metadata(client, sample_id, row)
-            print(f"✓ Successfully uploaded '{sample_name}' (ID: {sample_id})")
+                print(f"[INFO] Upload successful, updating metadata...")
+                update_success = update_sample_metadata(client, sample_id, row, debug=args.debug)
+                if update_success:
+                    print(f"✓ Successfully uploaded and updated '{sample_name}' (ID: {sample_id})")
+                else:
+                    print(f"✓ Uploaded '{sample_name}' (ID: {sample_id}) but metadata update had issues")
+            else:
+                print(f"✓ Successfully uploaded '{sample_name}' (ID: unknown)")
+            
             successful_uploads += 1
 
         except Exception as e:
             print(f"✗ Failed to upload '{sample_name}': {e}", file=sys.stderr)
+            if args.debug:
+                import traceback
+                traceback.print_exc()
             failed_uploads += 1
 
     print(f"\n{'='*50}")
@@ -540,4 +650,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

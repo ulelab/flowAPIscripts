@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """
 Non-interactive Flow.bio sample upload script using flowbio library.
+Supports both single-end and paired-end uploads.
+For paired-end: use "File 1" and "File 2" columns in the input file.
+For single-end: use "File" column (backward compatible).
 Credentials are embedded directly; use only in trusted environments.
 """
 
@@ -132,9 +135,9 @@ mutation UpdateSample(
 """
 
 # Default settings
-DEFAULT_PROJECT_ID = 710458278460049547
+DEFAULT_PROJECT_ID = 697823158432745172
 DEFAULT_CHUNK_SIZE = 1_000_000
-DEFAULT_SAMPLE_TYPE = "CLIP"
+DEFAULT_SAMPLE_TYPE = "RNA-Seq"
 ALLOWED_TSM: Dict[str, Set[str]] = {
     "CLIP": {
         "five_prime_barcode_sequence",
@@ -422,7 +425,8 @@ def build_metadata(row: Dict[str, Any], project_id: int) -> Dict[str, Any]:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Non-interactive Flow.bio sample upload (Excel or TSV input)"
+        description="Non-interactive Flow.bio sample upload (Excel or TSV input). "
+                    "Supports single-end (File column) and paired-end (File 1 and File 2 columns) uploads."
     )
     parser.add_argument("file", help="Path to input file (.xlsx, .xls, .tsv, or .txt)")
     parser.add_argument("--sheet", default=0, help="Worksheet name or index for Excel files (default: 0)")
@@ -488,38 +492,70 @@ def main():
         row = rows[idx - 1]
 
         sample_name = _get_cell_str(row, "Sample Name")
-        file_path = _get_cell_str(row, "File")
+        
+        # Support both "File 1"/"File 2" (paired-end) and "File" (single-end, backward compatibility)
+        file1_path = _get_cell_str(row, "File 1") or _get_cell_str(row, "File")
+        file2_path = _get_cell_str(row, "File 2")
 
         if not sample_name:
             print(f"Row {idx}: Missing sample name, skipping", file=sys.stderr)
             failed_uploads += 1
             continue
 
-        if not file_path:
-            print(f"Row {idx} ({sample_name}): Missing file path, skipping", file=sys.stderr)
+        if not file1_path:
+            print(f"Row {idx} ({sample_name}): Missing file path (File 1 or File), skipping", file=sys.stderr)
             failed_uploads += 1
             continue
 
-        full_path = normalize_path(file_path, args.base_dir)
-        if not os.path.exists(full_path):
-            print(f"Row {idx} ({sample_name}): File not found: {full_path}", file=sys.stderr)
+        full_path1 = normalize_path(file1_path, args.base_dir)
+        if not os.path.exists(full_path1):
+            print(f"Row {idx} ({sample_name}): File 1 not found: {full_path1}", file=sys.stderr)
             failed_uploads += 1
             continue
+
+        # If File 2 is provided, validate it exists
+        full_path2 = None
+        if file2_path:
+            full_path2 = normalize_path(file2_path, args.base_dir)
+            if not os.path.exists(full_path2):
+                print(f"Row {idx} ({sample_name}): File 2 not found: {full_path2}", file=sys.stderr)
+                failed_uploads += 1
+                continue
 
         metadata = build_metadata(row, args.project_id)
 
-        print(f"\nRow {idx}: Uploading '{sample_name}' from {full_path}")
+        if full_path2:
+            print(f"\nRow {idx}: Uploading paired-end '{sample_name}'")
+            print(f"  File 1: {full_path1}")
+            print(f"  File 2: {full_path2}")
+        else:
+            print(f"\nRow {idx}: Uploading single-end '{sample_name}' from {full_path1}")
         print(f"Metadata: {json.dumps(metadata, indent=2)}")
 
         try:
-            sample_flow = client.upload_sample(
-                sample_name,
-                full_path,
-                chunk_size=args.chunk_size,
-                retries=args.retries,
-                progress=True,
-                metadata=metadata,
-            )
+            # Build upload_sample arguments - path2 is optional
+            upload_args = {
+                "chunk_size": args.chunk_size,
+                "retries": args.retries,
+                "progress": True,
+                "metadata": metadata,
+            }
+            
+            if full_path2:
+                # Paired-end upload
+                sample_flow = client.upload_sample(
+                    sample_name,
+                    full_path1,
+                    full_path2,
+                    **upload_args
+                )
+            else:
+                # Single-end upload
+                sample_flow = client.upload_sample(
+                    sample_name,
+                    full_path1,
+                    **upload_args
+                )
 
             sample_id = sample_flow.get("id") if isinstance(sample_flow, dict) else getattr(sample_flow, "id", None)
             if sample_id:
