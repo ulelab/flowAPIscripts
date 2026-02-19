@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 
 # Static credentials (use with caution)
 FLOWBIO_USERNAME = "username"
-FLOWBIO_PASSWORD = "pass"
+FLOWBIO_PASSWORD = "password"
 
 def parse_rows(spec: str, nrows: int) -> list[int]:
     """Parse row specification like '1-10,15,22-24' into list of 1-based indices."""
@@ -222,7 +222,7 @@ def update_sample_metadata_graphql(client: Client, sample_id: str, row: Dict[str
             "graphql_var": "$experimentalMethod: String"
         },
         "purificationTarget": {
-            "excel_cols": ["Protein (Purification Target)", "Purification Target"],
+            "excel_cols": ["Protein (Purification Target)"],
             "graphql_var": "$purificationTarget: String"
         },
         "purificationTargetText": {
