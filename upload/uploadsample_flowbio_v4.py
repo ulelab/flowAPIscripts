@@ -210,90 +210,118 @@ def update_sample_metadata_graphql(client: Client, sample_id: str, row: Dict[str
         logger.warning("Client does not have 'execute' method for GraphQL")
         return False
     
-    # Build variables for GraphQL mutation
-    variables: Dict[str, Any] = {"id": sample_id}
-     
-    # Extract fields from row that need GraphQL update
-    field_mappings = {
-        "purificationAgent": ["Purification Agent"],
-        "experimentalMethod": ["Experimental Method"],
-        "purification_target": ["Protein (Purification Target)", "Purification Target"],
-        "purificationTargetText": ["Purification Target Annotation"],
-        "fivePrimeBarcodeSequence": ["5' Barcode Sequence"],
-        "threePrimeBarcodeSequence": ["3' Barcode Sequence"],
-        "threePrimeAdapterName": ["3' Adapter Name"],
-        "threePrimeAdapterSequence": ["3' Adapter Sequence"],
-        "rtPrimer": ["RT Primer"],
-        "read1Primer": ["Read 1 Primer"],
-        "read2Primer": ["Read 2 Primer"],
-        "umiBarcodeSequence": ["UMI Barcode Sequence"],
-        "umiSeparator": ["UMI Separator"],
-        "strandedness": ["Strandedness (Required)"],
-        "rnaSelectionMethod": ["RNA Selection Method"],
-        "ribosomeType": ["Ribosome Type"],
-        "sizeSelection": ["Size selection", "Size Selection"],
-        "separationMethod": ["Separation Method"],
-        "ribosomeStabilisationMethod": ["Ribosome Stabilization Method"],
+    # Combined field mapping: Excel columns -> Flow.bio field name -> GraphQL variable declaration
+    # Format: {flowbio_field: {"excel_cols": [...], "graphql_var": "$fieldName: String"}}
+    field_definitions = {
+        "purificationAgent": {
+            "excel_cols": ["Purification Agent"],
+            "graphql_var": "$purificationAgent: String"
+        },
+        "experimentalMethod": {
+            "excel_cols": ["Experimental Method"],
+            "graphql_var": "$experimentalMethod: String"
+        },
+        "purificationTarget": {
+            "excel_cols": ["Protein (Purification Target)", "Purification Target"],
+            "graphql_var": "$purificationTarget: String"
+        },
+        "purificationTargetText": {
+            "excel_cols": ["Purification Target Annotation"],
+            "graphql_var": "$purificationTargetText: String"
+        },
+        "fivePrimeBarcodeSequence": {
+            "excel_cols": ["5' Barcode Sequence"],
+            "graphql_var": "$fivePrimeBarcodeSequence: String"
+        },
+        "threePrimeBarcodeSequence": {
+            "excel_cols": ["3' Barcode Sequence"],
+            "graphql_var": "$threePrimeBarcodeSequence: String"
+        },
+        "threePrimeAdapterName": {
+            "excel_cols": ["3' Adapter Name"],
+            "graphql_var": "$threePrimeAdapterName: String"
+        },
+        "threePrimeAdapterSequence": {
+            "excel_cols": ["3' Adapter Sequence"],
+            "graphql_var": "$threePrimeAdapterSequence: String"
+        },
+        "rtPrimer": {
+            "excel_cols": ["RT Primer"],
+            "graphql_var": "$rtPrimer: String"
+        },
+        "read1Primer": {
+            "excel_cols": ["Read 1 Primer"],
+            "graphql_var": "$read1Primer: String"
+        },
+        "read2Primer": {
+            "excel_cols": ["Read 2 Primer"],
+            "graphql_var": "$read2Primer: String"
+        },
+        "umiBarcodeSequence": {
+            "excel_cols": ["UMI Barcode Sequence"],
+            "graphql_var": "$umiBarcodeSequence: String"
+        },
+        "umiSeparator": {
+            "excel_cols": ["UMI Separator"],
+            "graphql_var": "$umiSeparator: String"
+        },
+        "strandedness": {
+            "excel_cols": ["Strandedness (Required)"],
+            "graphql_var": "$strandedness: String"
+        },
+        "rnaSelectionMethod": {
+            "excel_cols": ["RNA Selection Method"],
+            "graphql_var": "$rnaSelectionMethod: String"
+        },
+        "ribosomeType": {
+            "excel_cols": ["Ribosome Type"],
+            "graphql_var": "$ribosomeType: String"
+        },
+        "sizeSelection": {
+            "excel_cols": ["Size selection", "Size Selection"],
+            "graphql_var": "$sizeSelection: String"
+        },
+        "separationMethod": {
+            "excel_cols": ["Separation Method"],
+            "graphql_var": "$separationMethod: String"
+        },
+        "ribosomeStabilisationMethod": {
+            "excel_cols": ["Ribosome Stabilization Method"],
+            "graphql_var": "$ribosomeStabilisationMethod: String"
+        },
     }
     
-    for flowbio_field, excel_cols in field_mappings.items():
-        if flowbio_field not in variables:  # Don't override if already set
-            for col in excel_cols:
-                value = _get_cell_str(row, col)
-                if value:
-                    variables[flowbio_field] = value
-                    break
-    
-    # Remove id from variables for mutation (it's a separate parameter)
-    mutation_vars = {k: v for k, v in variables.items() if k != "id" and v not in ("", None)}
-    
-    if not mutation_vars:
-        logger.info(f"No additional fields to update for sample {sample_id}")
-        return True
-    
-    # Handle purification_target -> purificationTarget mapping
-    if "purification_target" in mutation_vars:
-        mutation_vars["purificationTarget"] = mutation_vars.pop("purification_target")
-    
-    # Define all possible fields and their GraphQL variable names
-    all_possible_fields = {
-        "purificationAgent": "$purificationAgent: String",
-        "experimentalMethod": "$experimentalMethod: String",
-        "purificationTarget": "$purificationTarget: String",
-        "purificationTargetText": "$purificationTargetText: String",
-        "fivePrimeBarcodeSequence": "$fivePrimeBarcodeSequence: String",
-        "threePrimeBarcodeSequence": "$threePrimeBarcodeSequence: String",
-        "threePrimeAdapterName": "$threePrimeAdapterName: String",
-        "threePrimeAdapterSequence": "$threePrimeAdapterSequence: String",
-        "rtPrimer": "$rtPrimer: String",
-        "read1Primer": "$read1Primer: String",
-        "read2Primer": "$read2Primer: String",
-        "umiBarcodeSequence": "$umiBarcodeSequence: String",
-        "umiSeparator": "$umiSeparator: String",
-        "strandedness": "$strandedness: String",
-        "rnaSelectionMethod": "$rnaSelectionMethod: String",
-        "ribosomeType": "$ribosomeType: String",
-        "sizeSelection": "$sizeSelection: String",
-        "separationMethod": "$separationMethod: String",
-        "ribosomeStabilisationMethod": "$ribosomeStabilisationMethod: String",
-    }
-    
-    # Build mutation variables - only include fields that are present
+    # Extract values from Excel row and build mutation variables
     mutation_variables = {"id": sample_id}
     fields_to_include = []
     mutation_args = []
     
-    for field_name, var_def in all_possible_fields.items():
-        if field_name in mutation_vars:
-            mutation_variables[field_name] = mutation_vars[field_name]
-            fields_to_include.append(var_def)
-            mutation_args.append(f"{field_name}: ${field_name}")
+    for flowbio_field, field_def in field_definitions.items():
+        # Try to get value from Excel columns
+        value = None
+        for col in field_def["excel_cols"]:
+            cell_value = _get_cell_str(row, col)
+            if cell_value:
+                value = cell_value
+                break
+        
+        # If value found, add to mutation
+        if value:
+            mutation_variables[flowbio_field] = value
+            fields_to_include.append(field_def["graphql_var"])
+            mutation_args.append(f"{flowbio_field}: ${flowbio_field}")
+    
+    # Remove id from check (it's required, not optional)
+    if len(mutation_variables) == 1:  # Only "id" present
+        return True
     
     # Dynamically build GraphQL mutation with only the fields we have
-    if fields_to_include:
-        var_declarations = ",\n      ".join(fields_to_include)
-        mutation_args_str = ",\n        ".join(mutation_args)
-        mutation = f"""
+    if not fields_to_include:
+        return True
+    
+    var_declarations = ",\n      ".join(fields_to_include)
+    mutation_args_str = ",\n        ".join(mutation_args)
+    mutation = f"""
     mutation UpdateSample(
       $id: ID!,
       {var_declarations}
@@ -309,31 +337,18 @@ def update_sample_metadata_graphql(client: Client, sample_id: str, row: Dict[str
       }}
     }}
     """
-    else:
-        # No fields to update (shouldn't happen due to check above, but handle gracefully)
-        logger.info(f"No fields to update for sample {sample_id}")
-        return True
     
     try:
-        logger.info(f"Executing GraphQL updateSample mutation with variables:")
-        logger.info(json.dumps(mutation_variables, indent=2))
-        
         result = client.execute(mutation, variables=mutation_variables)
         
-        log_api_call("updateSample (GraphQL)", mutation_variables, result)
-        
         if result and result.get("data", {}).get("updateSample"):
-            logger.info(f"✓ Successfully updated sample {sample_id} via GraphQL")
             return True
         elif result and "errors" in result:
-            logger.error(f"GraphQL errors: {result['errors']}")
             return False
         else:
-            logger.warning(f"Unexpected GraphQL response: {result}")
             return False
             
-    except Exception as e:
-        logger.error(f"GraphQL updateSample failed: {e}", exc_info=True)
+    except Exception:
         return False
 
 def main():
@@ -457,10 +472,6 @@ def main():
                 logger.info(f"✓ Successfully updated metadata for '{sample_name}'")
             else:
                 logger.warning(f"⚠ Metadata update had issues for '{sample_name}'")
-                logger.warning(f"  Missing fields may need manual update:")
-                logger.warning(f"    - Purification Agent")
-                logger.warning(f"    - Experimental Method")
-                logger.warning(f"    - 5' Barcode Sequence")
             
             successful += 1
         elif sample_id is None:
