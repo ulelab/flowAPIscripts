@@ -285,9 +285,9 @@ def update_sample_metadata_graphql(client: Client, sample_id: str, row: Dict[str
             "excel_cols": ["Separation Method"],
             "graphql_var": "$separationMethod: String"
         },
-        "ribosomeStabilisationMethod": {
+        "ribosomeStabilizationMethod": {
             "excel_cols": ["Ribosome Stabilization Method"],
-            "graphql_var": "$ribosomeStabilisationMethod: String"
+            "graphql_var": "$ribosomeStabilizationMethod: String"
         },
     }
     
