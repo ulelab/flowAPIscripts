@@ -13,14 +13,14 @@ ENV_PREFIX="/scratch/prj/ppn_rnp_networks/users/mike.jones/software/mambaforge"
 source "${ENV_PREFIX}/etc/profile.d/conda.sh"
 conda activate flowbio
 
-TSV_FILE="/scratch/prj/ppn_rnp_networks/users/mike.jones/data/eCLIP/ctrl/ENCODE_ctrl.tsv"
+XLSX_FILE="/scratch/prj/ppn_rnp_networks/users/mike.jones/data/eCLIP/ctrl/ENCODE_ctrl.xlsx"
 BASE_DIR="/scratch/prj/ppn_rnp_networks/users/mike.jones/data/eCLIP/ctrl"
 
-ROW_SPEC=$(python3 - "${TSV_FILE}" "${SLURM_ARRAY_TASK_ID}" 4 <<'PY'
-import csv
+ROW_SPEC=$(python3 - "${XLSX_FILE}" "${SLURM_ARRAY_TASK_ID}" 4 <<'PY'
 import sys
+import pandas as pd
 
-tsv_path = sys.argv[1]
+xlsx_path = sys.argv[1]
 task_id = int(sys.argv[2])
 samples_per_task = int(sys.argv[3])
 
@@ -29,13 +29,14 @@ samples_per_task = int(sys.argv[3])
 start_idx = (task_id - 1) * samples_per_task + 1
 end_idx = start_idx + samples_per_task - 1
 
+# Read Excel file
+df = pd.read_excel(xlsx_path)
+num_rows = len(df)
+
 rows = []
-with open(tsv_path, newline="") as handle:
-    reader = csv.reader(handle, delimiter="\t")
-    header = next(reader, None)
-    for idx, _ in enumerate(reader, start=1):
-        if start_idx <= idx <= end_idx:
-            rows.append(str(idx))
+for idx in range(1, num_rows + 1):
+    if start_idx <= idx <= end_idx:
+        rows.append(str(idx))
 
 if rows:
     print(",".join(rows))
@@ -47,8 +48,8 @@ if [[ -z "${ROW_SPEC}" ]]; then
   exit 0
 fi
 
-python3 uploadsample_static.py \
-  "${TSV_FILE}" \
-  --rows "${ROW_SPEC}" \
-  --base-dir "${BASE_DIR}"
-
+python3 uploadsample_flowbio_v5.py \
+  -p 164066902982405709 \
+  -r "${ROW_SPEC}" \
+  --base-dir "${BASE_DIR}" \
+  "${XLSX_FILE}"

@@ -10,13 +10,14 @@ import getpass
 
 # -------------------------
 # CLI Usage - python3 ./flowrunanalysis_flowbio.py --pid ######### --filter sample_name 'STAU2_HepG2.*$' -n #ofbatches --start-batch 1 --end-batch 10
+# Multiple filters: --filter comments "UMI extracted to header" --filter barcode "NNNNN"
 # -------------------------
 def parse_args():
     p = argparse.ArgumentParser(description="Run Flow.bio CLIP analysis using flowbio library (fetch + client-side filter by sample name)")
     p.add_argument("--pid", "--PID", dest="project_id", required=True,
                    help="Flow.bio Project ID (string)")
-    p.add_argument("--filter", nargs=2, metavar=("KEY", "VALUE"), default=None,
-                   help='Metadata filter. Supported: --filter sample_name "<regex>" or --filter comments "<text>"')
+    p.add_argument("--filter", nargs=2, metavar=("KEY", "VALUE"), action="append", default=None,
+                   help='Metadata filter. Can be used multiple times. Supported: --filter sample_name "<regex>", --filter comments "<text>", or --filter barcode "<text>"')
     p.add_argument("-n", "--num-chunks", type=int, default=1,
                    help="Split selected samples into N executions using numpy.array_split (default: 1)")
     p.add_argument("--start-batch", type=int, default=1,
@@ -254,6 +255,35 @@ def filter_by_comments(samples: List[Dict], search_text: str | None) -> List[Dic
     logging.info("Filter comments containing '%s' matched %d / %d samples", search_text, len(matched), len(samples))
     return matched
 
+def filter_by_barcode(samples: List[Dict], barcode_pattern: str | None) -> List[Dict]:
+    """Filter samples where barcode field matches barcode_pattern"""
+    if not barcode_pattern:
+        return samples
+    
+    matched = []
+    for s in samples:
+        # Check metadata field - barcode could be in various locations
+        barcode = None
+        metadata = s.get("metadata", {})
+        if isinstance(metadata, dict):
+            # Try common barcode field names
+            barcode_obj = (metadata.get("fivePrimeBarcodeSequence") or metadata.get("five_prime_barcode_sequence"))
+            if isinstance(barcode_obj, dict):
+                barcode = barcode_obj.get("value")
+            elif isinstance(barcode_obj, str):
+                barcode = barcode_obj
+        
+        # Try top-level barcode field (fallback)
+        if not barcode:
+            barcode = s.get("barcode") or s.get("Barcode") or s.get("5p_barcode")
+        
+        # Check if barcode matches the pattern (exact match, case-sensitive for N's)
+        if barcode and barcode_pattern == barcode:
+            matched.append(s)
+    
+    logging.info("Filter barcode='%s' matched %d / %d samples", barcode_pattern, len(matched), len(samples))
+    return matched
+
 # -------------------------
 # Main
 # -------------------------
@@ -288,26 +318,27 @@ def main():
 
     # Parse --filter to determine if we need full sample details
     needs_details = False
-    filter_key = None
-    filter_value = None
     if args.filter:
-        filter_key, filter_value = args.filter
-        if filter_key.lower() == "comments":
-            needs_details = True  # Comments are in full metadata, need to fetch details
+        for filter_key, filter_value in args.filter:
+            if filter_key.lower() in ("comments", "barcode"):
+                needs_details = True  # Comments and barcode are in full metadata, need to fetch details
+                break
     
     # Fetch all samples for the project via REST (with details if needed for filtering)
     project_samples = fetch_all_project_samples(session, token, project_id, page_size=100, fetch_details=needs_details)
 
-    # Apply filters
+    # Apply filters (can be multiple)
     selected = project_samples
     if args.filter:
-        key, value = args.filter
-        if key.lower() == "sample_name":
-            selected = filter_by_sample_name(selected, value)
-        elif key.lower() == "comments":
-            selected = filter_by_comments(selected, value)
-        else:
-            raise SystemExit(f"Unsupported filter key: {key}. Supported: sample_name, comments")
+        for key, value in args.filter:
+            if key.lower() == "sample_name":
+                selected = filter_by_sample_name(selected, value)
+            elif key.lower() == "comments":
+                selected = filter_by_comments(selected, value)
+            elif key.lower() == "barcode":
+                selected = filter_by_barcode(selected, value)
+            else:
+                raise SystemExit(f"Unsupported filter key: {key}. Supported: sample_name, comments, barcode")
 
     # Apply limit if specified
     if args.limit:
@@ -373,13 +404,13 @@ def main():
 
         # Pipeline parameters
         params = {
-            "move_umi_to_header": "true",
-            "umi_header_format": "NNNNNNNNNN",
-            "umi_separator": "_",
+            "move_umi_to_header": "false",
+            #"umi_header_format": "NNNNN",
+            "umi_separator": "rbc:",
             "skip_umi_dedupe": "false",
             "crosslink_position": "start",
-            "encode_eclip": "false",
-            "star_params": "--outFilterMultimapNmax 100 --outFilterMultimapScoreRange 1 --outSAMattributes All --alignSJoverhangMin 8 --alignSJDBoverhangMin 1 --outFilterType BySJout --alignIntronMin 20 --alignIntronMax 1000000 --outFilterScoreMin 10 --alignEndsType Extend5pOfRead1 --twopassMode Basic --limitOutSJcollapsed 4000000",
+            "encode_eclip": "true",
+            #"star_params": "--outFilterMultimapNmax 100 --outFilterMultimapScoreRange 1 --outSAMattributes All --alignSJoverhangMin 8 --alignSJDBoverhangMin 1 --outFilterType BySJout --alignIntronMin 20 --alignIntronMax 1000000 --outFilterScoreMin 10 --alignEndsType Extend5pOfRead1 --twopassMode Basic --limitOutSJcollapsed 4000000",
         }
 
         # Build payload for REST API submission
