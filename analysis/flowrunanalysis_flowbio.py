@@ -10,14 +10,14 @@ import getpass
 
 # -------------------------
 # CLI Usage - python3 ./flowrunanalysis_flowbio.py --pid ######### --filter sample_name 'STAU2_HepG2.*$' -n #ofbatches --start-batch 1 --end-batch 10
-# Multiple filters: --filter comments "UMI extracted to header" --filter barcode "NNNNN"
+# Multiple filters: --filter comments "UMI extracted to header" --filter barcode "NNNNN" --filter experimental_method "seCLIP"
 # -------------------------
 def parse_args():
     p = argparse.ArgumentParser(description="Run Flow.bio CLIP analysis using flowbio library (fetch + client-side filter by sample name)")
     p.add_argument("--pid", "--PID", dest="project_id", required=True,
                    help="Flow.bio Project ID (string)")
     p.add_argument("--filter", nargs=2, metavar=("KEY", "VALUE"), action="append", default=None,
-                   help='Metadata filter. Can be used multiple times. Supported: --filter sample_name "<regex>", --filter comments "<text>", or --filter barcode "<text>"')
+                   help='Metadata filter. Can be used multiple times. Supported: --filter sample_name "<regex>", --filter comments "<text>", --filter barcode "<text>", --filter experimental_method "<text>"')
     p.add_argument("-n", "--num-chunks", type=int, default=1,
                    help="Split selected samples into N executions using numpy.array_split (default: 1)")
     p.add_argument("--start-batch", type=int, default=1,
@@ -284,6 +284,40 @@ def filter_by_barcode(samples: List[Dict], barcode_pattern: str | None) -> List[
     logging.info("Filter barcode='%s' matched %d / %d samples", barcode_pattern, len(matched), len(samples))
     return matched
 
+def filter_by_experimental_method(samples: List[Dict], search_text: str | None) -> List[Dict]:
+    """Filter samples where experimental method field matches search_text (case-insensitive)"""
+    if not search_text:
+        return samples
+
+    matched = []
+    for s in samples:
+        exp_method = None
+        metadata = s.get("metadata", {})
+        if isinstance(metadata, dict):
+            exp_obj = (
+                metadata.get("experimentalMethod")
+                or metadata.get("experimental_method")
+                or metadata.get("Experimental Method")
+            )
+            if isinstance(exp_obj, dict):
+                exp_method = exp_obj.get("value")
+            elif isinstance(exp_obj, str):
+                exp_method = exp_obj
+
+        if not exp_method:
+            exp_method = s.get("experimental_method") or s.get("experimentalMethod") or s.get("Experimental Method")
+
+        if exp_method and search_text.lower() == str(exp_method).lower():
+            matched.append(s)
+
+    logging.info(
+        "Filter experimental_method='%s' matched %d / %d samples",
+        search_text,
+        len(matched),
+        len(samples),
+    )
+    return matched
+
 # -------------------------
 # Main
 # -------------------------
@@ -320,8 +354,8 @@ def main():
     needs_details = False
     if args.filter:
         for filter_key, filter_value in args.filter:
-            if filter_key.lower() in ("comments", "barcode"):
-                needs_details = True  # Comments and barcode are in full metadata, need to fetch details
+            if filter_key.lower() in ("comments", "barcode", "experimental_method"):
+                needs_details = True  # These are in full metadata, need to fetch details
                 break
     
     # Fetch all samples for the project via REST (with details if needed for filtering)
@@ -337,8 +371,10 @@ def main():
                 selected = filter_by_comments(selected, value)
             elif key.lower() == "barcode":
                 selected = filter_by_barcode(selected, value)
+            elif key.lower() == "experimental_method":
+                selected = filter_by_experimental_method(selected, value)
             else:
-                raise SystemExit(f"Unsupported filter key: {key}. Supported: sample_name, comments, barcode")
+                raise SystemExit(f"Unsupported filter key: {key}. Supported: sample_name, comments, barcode, experimental_method")
 
     # Apply limit if specified
     if args.limit:
@@ -405,11 +441,11 @@ def main():
         # Pipeline parameters
         params = {
             "move_umi_to_header": "false",
-            #"umi_header_format": "NNNNN",
+            #"umi_header_format": "NNNNNNNNNN",
             "umi_separator": "rbc:",
             "skip_umi_dedupe": "false",
             "crosslink_position": "start",
-            "encode_eclip": "true",
+            "encode_eclip": "false",
             #"star_params": "--outFilterMultimapNmax 100 --outFilterMultimapScoreRange 1 --outSAMattributes All --alignSJoverhangMin 8 --alignSJDBoverhangMin 1 --outFilterType BySJout --alignIntronMin 20 --alignIntronMax 1000000 --outFilterScoreMin 10 --alignEndsType Extend5pOfRead1 --twopassMode Basic --limitOutSJcollapsed 4000000",
         }
 

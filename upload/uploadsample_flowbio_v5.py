@@ -14,7 +14,6 @@ import pandas as pd
 FLOWBIO_USERNAME = "username"
 FLOWBIO_PASSWORD = "password"
 
-
 def _get(row: Dict[str, Any], key: str) -> str:
     val = row.get(key)
     if val is None or (isinstance(val, float) and math.isnan(val)):

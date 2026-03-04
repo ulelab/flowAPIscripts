@@ -36,7 +36,7 @@ num_rows = len(df)
 rows = []
 for idx in range(1, num_rows + 1):
     if start_idx <= idx <= end_idx:
-        rows.append(str(idx))
+            rows.append(str(idx))
 
 if rows:
     print(",".join(rows))
