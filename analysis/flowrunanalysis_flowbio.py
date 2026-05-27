@@ -14,7 +14,7 @@ import getpass
 # -------------------------
 def parse_args():
     p = argparse.ArgumentParser(description="Run Flow.bio CLIP analysis using flowbio library (fetch + client-side filter by sample name)")
-    p.add_argument("--pid", "--PID", dest="project_id", required=True,
+    p.add_argument("-p", "--pid", dest="project_id", required=True,
                    help="Flow.bio Project ID (string)")
     p.add_argument("--filter", nargs=2, metavar=("KEY", "VALUE"), action="append", default=None,
                    help='Metadata filter. Can be used multiple times. Supported: --filter sample_name "<regex>", --filter comments "<text>", --filter barcode "<text>", --filter experimental_method "<text>"')
@@ -440,13 +440,13 @@ def main():
 
         # Pipeline parameters
         params = {
-            "move_umi_to_header": "false",
-            #"umi_header_format": "NNNNNNNNNN",
-            "umi_separator": "rbc:",
+            "move_umi_to_header": "true",
+            "umi_header_format": "NNNNNNNNN",
+            "umi_separator": "_",
             "skip_umi_dedupe": "false",
             "crosslink_position": "start",
             "encode_eclip": "false",
-            #"star_params": "--outFilterMultimapNmax 100 --outFilterMultimapScoreRange 1 --outSAMattributes All --alignSJoverhangMin 8 --alignSJDBoverhangMin 1 --outFilterType BySJout --alignIntronMin 20 --alignIntronMax 1000000 --outFilterScoreMin 10 --alignEndsType Extend5pOfRead1 --twopassMode Basic --limitOutSJcollapsed 4000000",
+            "star_params": "--outFilterMultimapNmax 100 --outFilterMultimapScoreRange 1 --outSAMattributes All --alignSJoverhangMin 8 --alignSJDBoverhangMin 1 --outFilterType BySJout --alignIntronMin 20 --alignIntronMax 1000000 --outFilterScoreMin 10 --alignEndsType Extend5pOfRead1 --twopassMode Basic --limitOutSJcollapsed 4000000",
         }
 
         # Build payload for REST API submission

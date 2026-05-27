@@ -1,0 +1,1578 @@
+[
+  {
+    "sample_id": "768572505503251974",
+    "sample_name": "C34_3",
+    "sample_metadata": {
+      "scientist": {
+        "attribute_name": "Scientist",
+        "attribute_description": "The name of the scientist who performed the original experiment.",
+        "is_list": false,
+        "url_pattern": null,
+        "value": "urskajanjos",
+        "annotation": ""
+      },
+      "strandedness": {
+        "attribute_name": "Strandedness",
+        "attribute_description": "The strandedness of the sample.",
+        "is_list": false,
+        "url_pattern": null,
+        "value": "auto",
+        "annotation": ""
+      }
+    },
+    "data_count": 2,
+    "uploaded_data_count": 2,
+    "data": [
+      {
+        "id": "972194783671767162",
+        "filename": "JAN5662A9_S163_L002_R1_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1525186565,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718264580,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "976501233338733265",
+          "filename": "JAN5662A9_S163_L002_R2_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "637988637714553633",
+          "name": "JAN5662A9_S163_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "768572505503251974",
+          "name": "C34_3"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      },
+      {
+        "id": "976501233338733265",
+        "filename": "JAN5662A9_S163_L002_R2_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1601943102,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718264902,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "972194783671767162",
+          "filename": "JAN5662A9_S163_L002_R1_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "637988637714553633",
+          "name": "JAN5662A9_S163_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "768572505503251974",
+          "name": "C34_3"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      }
+    ],
+    "uploaded_data": [
+      {
+        "id": "972194783671767162",
+        "filename": "JAN5662A9_S163_L002_R1_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1525186565,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718264580,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "976501233338733265",
+          "filename": "JAN5662A9_S163_L002_R2_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "637988637714553633",
+          "name": "JAN5662A9_S163_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "768572505503251974",
+          "name": "C34_3"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      },
+      {
+        "id": "976501233338733265",
+        "filename": "JAN5662A9_S163_L002_R2_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1601943102,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718264902,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "972194783671767162",
+          "filename": "JAN5662A9_S163_L002_R1_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "637988637714553633",
+          "name": "JAN5662A9_S163_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "768572505503251974",
+          "name": "C34_3"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      }
+    ]
+  },
+  {
+    "sample_id": "514651434733293759",
+    "sample_name": "C34_2",
+    "sample_metadata": {
+      "scientist": {
+        "attribute_name": "Scientist",
+        "attribute_description": "The name of the scientist who performed the original experiment.",
+        "is_list": false,
+        "url_pattern": null,
+        "value": "urskajanjos",
+        "annotation": ""
+      },
+      "strandedness": {
+        "attribute_name": "Strandedness",
+        "attribute_description": "The strandedness of the sample.",
+        "is_list": false,
+        "url_pattern": null,
+        "value": "auto",
+        "annotation": ""
+      }
+    },
+    "data_count": 2,
+    "uploaded_data_count": 2,
+    "data": [
+      {
+        "id": "946873291844280602",
+        "filename": "JAN5662A8_S162_L002_R1_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1878707430,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718262779,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "413124387244599679",
+          "filename": "JAN5662A8_S162_L002_R2_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "170707655180250215",
+          "name": "JAN5662A8_S162_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "514651434733293759",
+          "name": "C34_2"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      },
+      {
+        "id": "413124387244599679",
+        "filename": "JAN5662A8_S162_L002_R2_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1969647211,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718264143,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "946873291844280602",
+          "filename": "JAN5662A8_S162_L002_R1_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "170707655180250215",
+          "name": "JAN5662A8_S162_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "514651434733293759",
+          "name": "C34_2"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      }
+    ],
+    "uploaded_data": [
+      {
+        "id": "946873291844280602",
+        "filename": "JAN5662A8_S162_L002_R1_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1878707430,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718262779,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "413124387244599679",
+          "filename": "JAN5662A8_S162_L002_R2_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "170707655180250215",
+          "name": "JAN5662A8_S162_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "514651434733293759",
+          "name": "C34_2"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      },
+      {
+        "id": "413124387244599679",
+        "filename": "JAN5662A8_S162_L002_R2_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1969647211,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718264143,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "946873291844280602",
+          "filename": "JAN5662A8_S162_L002_R1_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "170707655180250215",
+          "name": "JAN5662A8_S162_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "514651434733293759",
+          "name": "C34_2"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      }
+    ]
+  },
+  {
+    "sample_id": "498815663481046025",
+    "sample_name": "C34_1",
+    "sample_metadata": {
+      "scientist": {
+        "attribute_name": "Scientist",
+        "attribute_description": "The name of the scientist who performed the original experiment.",
+        "is_list": false,
+        "url_pattern": null,
+        "value": "urskajanjos",
+        "annotation": ""
+      },
+      "strandedness": {
+        "attribute_name": "Strandedness",
+        "attribute_description": "The strandedness of the sample.",
+        "is_list": false,
+        "url_pattern": null,
+        "value": "auto",
+        "annotation": ""
+      }
+    },
+    "data_count": 2,
+    "uploaded_data_count": 2,
+    "data": [
+      {
+        "id": "432952299221283516",
+        "filename": "JAN5662A7_S161_L002_R1_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1863171979,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718262029,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "219637391063422123",
+          "filename": "JAN5662A7_S161_L002_R2_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "567257100720528447",
+          "name": "JAN5662A7_S161_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "498815663481046025",
+          "name": "C34_1"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      },
+      {
+        "id": "219637391063422123",
+        "filename": "JAN5662A7_S161_L002_R2_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1972023103,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718262421,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "432952299221283516",
+          "filename": "JAN5662A7_S161_L002_R1_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "567257100720528447",
+          "name": "JAN5662A7_S161_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "498815663481046025",
+          "name": "C34_1"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      }
+    ],
+    "uploaded_data": [
+      {
+        "id": "432952299221283516",
+        "filename": "JAN5662A7_S161_L002_R1_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1863171979,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718262029,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "219637391063422123",
+          "filename": "JAN5662A7_S161_L002_R2_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "567257100720528447",
+          "name": "JAN5662A7_S161_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "498815663481046025",
+          "name": "C34_1"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      },
+      {
+        "id": "219637391063422123",
+        "filename": "JAN5662A7_S161_L002_R2_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1972023103,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718262421,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "432952299221283516",
+          "filename": "JAN5662A7_S161_L002_R1_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "567257100720528447",
+          "name": "JAN5662A7_S161_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "498815663481046025",
+          "name": "C34_1"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      }
+    ]
+  },
+  {
+    "sample_id": "522771633793796817",
+    "sample_name": "C13_3_JAN5662A6_S160_L002_R1_001",
+    "sample_metadata": {
+      "strandedness": {
+        "attribute_name": "Strandedness",
+        "attribute_description": "The strandedness of the sample.",
+        "is_list": false,
+        "url_pattern": null,
+        "value": "auto",
+        "annotation": ""
+      }
+    },
+    "data_count": 2,
+    "uploaded_data_count": 2,
+    "data": [
+      {
+        "id": "139068125502949832",
+        "filename": "JAN5662A6_S160_L002_R1_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1769169590,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718204336,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "294035052627556442",
+          "filename": "JAN5662A6_S160_L002_R2_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "889970279729592523",
+          "name": "JAN5662A6_S160_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "522771633793796817",
+          "name": "C13_3_JAN5662A6_S160_L002_R1_001"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      },
+      {
+        "id": "294035052627556442",
+        "filename": "JAN5662A6_S160_L002_R2_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1861006727,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718205576,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "139068125502949832",
+          "filename": "JAN5662A6_S160_L002_R1_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "889970279729592523",
+          "name": "JAN5662A6_S160_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "522771633793796817",
+          "name": "C13_3_JAN5662A6_S160_L002_R1_001"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      }
+    ],
+    "uploaded_data": [
+      {
+        "id": "139068125502949832",
+        "filename": "JAN5662A6_S160_L002_R1_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1769169590,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718204336,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "294035052627556442",
+          "filename": "JAN5662A6_S160_L002_R2_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "889970279729592523",
+          "name": "JAN5662A6_S160_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "522771633793796817",
+          "name": "C13_3_JAN5662A6_S160_L002_R1_001"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      },
+      {
+        "id": "294035052627556442",
+        "filename": "JAN5662A6_S160_L002_R2_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1861006727,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718205576,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "139068125502949832",
+          "filename": "JAN5662A6_S160_L002_R1_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "889970279729592523",
+          "name": "JAN5662A6_S160_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "522771633793796817",
+          "name": "C13_3_JAN5662A6_S160_L002_R1_001"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      }
+    ]
+  },
+  {
+    "sample_id": "748764122566038963",
+    "sample_name": "C13_2_JAN5662A5_S159_L002_R1_001",
+    "sample_metadata": {
+      "scientist": {
+        "attribute_name": "Scientist",
+        "attribute_description": "The name of the scientist who performed the original experiment.",
+        "is_list": false,
+        "url_pattern": null,
+        "value": "urskajanjos",
+        "annotation": ""
+      },
+      "strandedness": {
+        "attribute_name": "Strandedness",
+        "attribute_description": "The strandedness of the sample.",
+        "is_list": false,
+        "url_pattern": null,
+        "value": "auto",
+        "annotation": ""
+      }
+    },
+    "data_count": 2,
+    "uploaded_data_count": 2,
+    "data": [
+      {
+        "id": "577339923705069834",
+        "filename": "JAN5662A5_S159_L002_R1_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1620017338,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718201650,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "525448568356677701",
+          "filename": "JAN5662A5_S159_L002_R2_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "468861985678577262",
+          "name": "JAN5662A5_S159_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "748764122566038963",
+          "name": "C13_2_JAN5662A5_S159_L002_R1_001"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      },
+      {
+        "id": "525448568356677701",
+        "filename": "JAN5662A5_S159_L002_R2_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1676477741,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718202779,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "577339923705069834",
+          "filename": "JAN5662A5_S159_L002_R1_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "468861985678577262",
+          "name": "JAN5662A5_S159_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "748764122566038963",
+          "name": "C13_2_JAN5662A5_S159_L002_R1_001"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      }
+    ],
+    "uploaded_data": [
+      {
+        "id": "577339923705069834",
+        "filename": "JAN5662A5_S159_L002_R1_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1620017338,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718201650,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "525448568356677701",
+          "filename": "JAN5662A5_S159_L002_R2_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "468861985678577262",
+          "name": "JAN5662A5_S159_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "748764122566038963",
+          "name": "C13_2_JAN5662A5_S159_L002_R1_001"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      },
+      {
+        "id": "525448568356677701",
+        "filename": "JAN5662A5_S159_L002_R2_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1676477741,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718202779,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "577339923705069834",
+          "filename": "JAN5662A5_S159_L002_R1_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "468861985678577262",
+          "name": "JAN5662A5_S159_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "748764122566038963",
+          "name": "C13_2_JAN5662A5_S159_L002_R1_001"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      }
+    ]
+  },
+  {
+    "sample_id": "603772378165133278",
+    "sample_name": "C13_1_JAN5662A4_S158_L002_R1_001",
+    "sample_metadata": {
+      "strandedness": {
+        "attribute_name": "Strandedness",
+        "attribute_description": "The strandedness of the sample.",
+        "is_list": false,
+        "url_pattern": null,
+        "value": "auto",
+        "annotation": ""
+      }
+    },
+    "data_count": 2,
+    "uploaded_data_count": 2,
+    "data": [
+      {
+        "id": "720415660768181002",
+        "filename": "JAN5662A4_S158_L002_R1_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1517452507,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718198014,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "934694963507915204",
+          "filename": "JAN5662A4_S158_L002_R2_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "455715432247585105",
+          "name": "JAN5662A4_S158_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "603772378165133278",
+          "name": "C13_1_JAN5662A4_S158_L002_R1_001"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      },
+      {
+        "id": "934694963507915204",
+        "filename": "JAN5662A4_S158_L002_R2_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1599317389,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718199144,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "720415660768181002",
+          "filename": "JAN5662A4_S158_L002_R1_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "455715432247585105",
+          "name": "JAN5662A4_S158_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "603772378165133278",
+          "name": "C13_1_JAN5662A4_S158_L002_R1_001"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      }
+    ],
+    "uploaded_data": [
+      {
+        "id": "720415660768181002",
+        "filename": "JAN5662A4_S158_L002_R1_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1517452507,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718198014,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "934694963507915204",
+          "filename": "JAN5662A4_S158_L002_R2_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "455715432247585105",
+          "name": "JAN5662A4_S158_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "603772378165133278",
+          "name": "C13_1_JAN5662A4_S158_L002_R1_001"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      },
+      {
+        "id": "934694963507915204",
+        "filename": "JAN5662A4_S158_L002_R2_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1599317389,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718199144,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "720415660768181002",
+          "filename": "JAN5662A4_S158_L002_R1_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "455715432247585105",
+          "name": "JAN5662A4_S158_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "603772378165133278",
+          "name": "C13_1_JAN5662A4_S158_L002_R1_001"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      }
+    ]
+  },
+  {
+    "sample_id": "984229144203895342",
+    "sample_name": "WT_3_JAN5662A3_S157_L002_R1_001",
+    "sample_metadata": {
+      "scientist": {
+        "attribute_name": "Scientist",
+        "attribute_description": "The name of the scientist who performed the original experiment.",
+        "is_list": false,
+        "url_pattern": null,
+        "value": "urskajanjos",
+        "annotation": ""
+      },
+      "strandedness": {
+        "attribute_name": "Strandedness",
+        "attribute_description": "The strandedness of the sample.",
+        "is_list": false,
+        "url_pattern": null,
+        "value": "auto",
+        "annotation": ""
+      }
+    },
+    "data_count": 2,
+    "uploaded_data_count": 2,
+    "data": [
+      {
+        "id": "285782955840406384",
+        "filename": "JAN5662A3_S157_L002_R1_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1849336448,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718191614,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "426675294988383392",
+          "filename": "JAN5662A3_S157_L002_R2_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "877120349912132440",
+          "name": "JAN5662A3_S157_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "984229144203895342",
+          "name": "WT_3_JAN5662A3_S157_L002_R1_001"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      },
+      {
+        "id": "426675294988383392",
+        "filename": "JAN5662A3_S157_L002_R2_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1944740407,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718193105,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "285782955840406384",
+          "filename": "JAN5662A3_S157_L002_R1_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "877120349912132440",
+          "name": "JAN5662A3_S157_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "984229144203895342",
+          "name": "WT_3_JAN5662A3_S157_L002_R1_001"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      }
+    ],
+    "uploaded_data": [
+      {
+        "id": "285782955840406384",
+        "filename": "JAN5662A3_S157_L002_R1_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1849336448,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718191614,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "426675294988383392",
+          "filename": "JAN5662A3_S157_L002_R2_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "877120349912132440",
+          "name": "JAN5662A3_S157_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "984229144203895342",
+          "name": "WT_3_JAN5662A3_S157_L002_R1_001"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      },
+      {
+        "id": "426675294988383392",
+        "filename": "JAN5662A3_S157_L002_R2_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1944740407,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718193105,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "285782955840406384",
+          "filename": "JAN5662A3_S157_L002_R1_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "877120349912132440",
+          "name": "JAN5662A3_S157_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "984229144203895342",
+          "name": "WT_3_JAN5662A3_S157_L002_R1_001"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      }
+    ]
+  },
+  {
+    "sample_id": "309114646544730159",
+    "sample_name": "WT_2_JAN5662A2_S156_L002_R1_001",
+    "sample_metadata": {
+      "scientist": {
+        "attribute_name": "Scientist",
+        "attribute_description": "The name of the scientist who performed the original experiment.",
+        "is_list": false,
+        "url_pattern": null,
+        "value": "urskajanjos",
+        "annotation": ""
+      },
+      "strandedness": {
+        "attribute_name": "Strandedness",
+        "attribute_description": "The strandedness of the sample.",
+        "is_list": false,
+        "url_pattern": null,
+        "value": "auto",
+        "annotation": ""
+      }
+    },
+    "data_count": 2,
+    "uploaded_data_count": 2,
+    "data": [
+      {
+        "id": "280613983521579990",
+        "filename": "JAN5662A2_S156_L002_R1_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1555484643,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718185946,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "655313548956332671",
+          "filename": "JAN5662A2_S156_L002_R2_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "840998423281617379",
+          "name": "JAN5662A2_S156_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "309114646544730159",
+          "name": "WT_2_JAN5662A2_S156_L002_R1_001"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      },
+      {
+        "id": "655313548956332671",
+        "filename": "JAN5662A2_S156_L002_R2_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1652726037,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718187129,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "280613983521579990",
+          "filename": "JAN5662A2_S156_L002_R1_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "840998423281617379",
+          "name": "JAN5662A2_S156_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "309114646544730159",
+          "name": "WT_2_JAN5662A2_S156_L002_R1_001"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      }
+    ],
+    "uploaded_data": [
+      {
+        "id": "280613983521579990",
+        "filename": "JAN5662A2_S156_L002_R1_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1555484643,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718185946,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "655313548956332671",
+          "filename": "JAN5662A2_S156_L002_R2_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "840998423281617379",
+          "name": "JAN5662A2_S156_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "309114646544730159",
+          "name": "WT_2_JAN5662A2_S156_L002_R1_001"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      },
+      {
+        "id": "655313548956332671",
+        "filename": "JAN5662A2_S156_L002_R2_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 1652726037,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718187129,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "280613983521579990",
+          "filename": "JAN5662A2_S156_L002_R1_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "840998423281617379",
+          "name": "JAN5662A2_S156_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "309114646544730159",
+          "name": "WT_2_JAN5662A2_S156_L002_R1_001"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      }
+    ]
+  },
+  {
+    "sample_id": "504400742299372643",
+    "sample_name": "WT_1_JAN5662A1_S155_L002_R1_001",
+    "sample_metadata": {
+      "scientist": {
+        "attribute_name": "Scientist",
+        "attribute_description": "The name of the scientist who performed the original experiment.",
+        "is_list": false,
+        "url_pattern": null,
+        "value": "urskajanjos",
+        "annotation": ""
+      },
+      "pi": {
+        "attribute_name": "PI",
+        "attribute_description": "The name of the principal investigator whose lab performed the original experiment.",
+        "is_list": false,
+        "url_pattern": null,
+        "value": "Jernej Ule",
+        "annotation": ""
+      },
+      "strandedness": {
+        "attribute_name": "Strandedness",
+        "attribute_description": "The strandedness of the sample.",
+        "is_list": false,
+        "url_pattern": null,
+        "value": "auto",
+        "annotation": ""
+      }
+    },
+    "data_count": 2,
+    "uploaded_data_count": 2,
+    "data": [
+      {
+        "id": "514359607488656296",
+        "filename": "JAN5662A1_S155_L002_R1_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 2003346136,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718176685,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "240406783685084771",
+          "filename": "JAN5662A1_S155_L002_R2_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "539198887506611254",
+          "name": "JAN5662A1_S155_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "504400742299372643",
+          "name": "WT_1_JAN5662A1_S155_L002_R1_001"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      },
+      {
+        "id": "240406783685084771",
+        "filename": "JAN5662A1_S155_L002_R2_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 2105332900,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718178359,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "514359607488656296",
+          "filename": "JAN5662A1_S155_L002_R1_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "539198887506611254",
+          "name": "JAN5662A1_S155_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "504400742299372643",
+          "name": "WT_1_JAN5662A1_S155_L002_R1_001"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      }
+    ],
+    "uploaded_data": [
+      {
+        "id": "514359607488656296",
+        "filename": "JAN5662A1_S155_L002_R1_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 2003346136,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718176685,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "240406783685084771",
+          "filename": "JAN5662A1_S155_L002_R2_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "539198887506611254",
+          "name": "JAN5662A1_S155_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "504400742299372643",
+          "name": "WT_1_JAN5662A1_S155_L002_R1_001"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      },
+      {
+        "id": "240406783685084771",
+        "filename": "JAN5662A1_S155_L002_R2_001.fastq.gz",
+        "filetype": "fastq.gz",
+        "size": 2105332900,
+        "is_binary": true,
+        "is_directory": false,
+        "created": 1718178359,
+        "category": 4,
+        "data_type": null,
+        "private": true,
+        "absolute_path": "",
+        "owner": {
+          "username": "urskajanjos",
+          "name": "Urska Janjos",
+          "image": null
+        },
+        "group_owner": null,
+        "paired": {
+          "id": "514359607488656296",
+          "filename": "JAN5662A1_S155_L002_R1_001.fastq.gz"
+        },
+        "fileset": {
+          "id": "539198887506611254",
+          "name": "JAN5662A1_S155_L002_R"
+        },
+        "execution": null,
+        "sample": {
+          "id": "504400742299372643",
+          "name": "WT_1_JAN5662A1_S155_L002_R1_001"
+        },
+        "project": {
+          "id": "420535447786639020",
+          "name": "mESC WT and decoy KO"
+        },
+        "can_edit": true
+      }
+    ]
+  }
+]

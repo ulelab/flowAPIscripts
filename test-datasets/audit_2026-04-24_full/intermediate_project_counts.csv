@@ -1,0 +1,30 @@
+segment,project_name,row_count
+GEO,RBP ENCODE Data,504
+GEO,RBP ENCODE Control,275
+GEO,C2H2-zinc finger transcription factors bind RNA and function in diverse post-transcriptional regulatory processes,191
+GEO,irCLIP-RNP and Re-CLIP reveal patterns of dynamic protein assemblies on RNA,116
+GEO,FLASH: ultra-fast protocol to identify RNA–protein interactions in cells,90
+GEO,Regulation of alternative polyadenylation by the C2H2-zinc finger protein Sp1,22
+GEO,The interaction of PRC2 with RNA or chromatin is mutually antagonistic,18
+GEO,CDK11 regulates pre-mRNA splicing by phosphorylation of SF3B1,16
+GEO,ZFP36 in BMDMs (mouse GRCm38),15
+GEO,FUBP1 is a general splicing factor facilitating 3′ splice site recognition and splicing of long introns,14
+GEO,Nuclear speckles enable processing of RNA from GC-rich isochores,8
+GEO,The molecular dissection of TRIM25’s RNA-binding mechanism provides key insights into its antiviral activity,8
+GEO,PTBP1 in CD8 T cells (mouse GRCm38),6
+GEO,ZFP36L1 in CTLs (mouse GRCm39),6
+GEO,PTBP1 in splenic B cells (mouse GRCm38),5
+GEO,ZFP36L1 in activated CD4 T cells (mouse GRCm38),4
+GEO,Human Tra2 proteins jointly control a CHEK1 splicing switch among alternative and constitutive target exons,3
+GEO,MKRN2 physically interacts with GLE1 to regulate mRNA export and zebrafish retinal development,3
+GEO,ZFP36L1 in thymocytes (mouse GRCm38),3
+GEO,PTBP3 in splenic B cells (mouse GRCm38),3
+GEO,HuR in splenic B cells (mouse GRCm38),3
+GEO,hnRNPM protects against the dsRNA-mediated interferon response by repressing LINE-associated cryptic splicing,2
+GEO,ZFP36L1 in activated B cells (mouse GRCm38),2
+ENA,TDP-43 condensation properties specify its RNA-binding and regulatory repertoire,68
+ENA,A systems view of spliceosomal assembly and branchpoints with iCLIP,38
+ENA,Heteromeric RNP Assembly at LINEs Controls Lineage-Specific RNA Processing,14
+ENA,Characterizing the RNA targets and position-dependent splicing regulation by TDP-43,14
+ENA,Direct Competition between hnRNP C and U2AF65 Protects the Transcriptome from the Exonization of Alu Elements,7
+ENA,iCLIP reveals the function of hnRNP particles in splicing at individual nucleotide resolution,3

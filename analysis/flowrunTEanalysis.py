@@ -323,15 +323,15 @@ def main():
         
         # Pipeline parameters
         params = {
-            "move_umi_to_header": "false",
-            #"umi_header_format": "NNNNNNNNNN",
-            "umi_separator": "rbc:",
+            "skip_umi_extract": "false",
+            "umitools_bc_pattern": "NNNNNNNNNN",
+            "umitools_umi_separator": "_",
             "skip_umi_dedupe": "false",
             "crosslink_position": "start",
-            "encode_eclip": "true",
+            "encode_eclip": "false",
             "run_te": "true",
             "source": "fastq",
-            #"star_params": "--outFilterMultimapNmax 100 --outFilterMultimapScoreRange 1 --outSAMattributes All --alignSJoverhangMin 8 --alignSJDBoverhangMin 1 --outFilterType BySJout --alignIntronMin 20 --alignIntronMax 1000000 --outFilterScoreMin 10 --alignEndsType Extend5pOfRead1 --twopassMode Basic --limitOutSJcollapsed 4000000",
+            "star_params": "--outFilterMultimapNmax 100 --outFilterMultimapScoreRange 1 --outSAMattributes All --alignSJoverhangMin 8 --alignSJDBoverhangMin 1 --outFilterType BySJout --alignIntronMin 20 --alignIntronMax 1000000 --outFilterScoreMin 10 --alignEndsType Extend5pOfRead1 --twopassMode Basic --limitOutSJcollapsed 4000000",
         }
 
         # Build payload for REST API submission

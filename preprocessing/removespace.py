@@ -3,8 +3,14 @@
 import sys
 import subprocess
 
+def _clean_header_line(text: str) -> bytes:
+    """Normalize FASTQ header / plus line: spaces and slashes break some tools."""
+    s = text.strip().replace(' ', '_').replace('/', '_')
+    return s.encode() + b'\n'
+
+
 def process_fastq(input_file, output_file):
-    """Process FASTQ file to remove spaces from headers using pigz."""
+    """Process FASTQ file: spaces and slashes -> underscore on lines 1 and 3 (pigz)."""
     is_gzipped = input_file.endswith('.gz')
     
     # Set up input stream
@@ -29,9 +35,11 @@ def process_fastq(input_file, output_file):
     try:
         line_count = 0
         for line in pigz_decompress.stdout:
-            if line_count % 4 == 0:  # Header line
-                cleaned_header = line.decode().strip().replace(' ', '_').encode() + b'\n'
-                pigz_compress.stdin.write(cleaned_header)
+            # FASTQ records are 4 lines:
+            # 0: header, 1: sequence, 2: plus line, 3: quality
+            # Remove spaces on lines 0 and 2 only.
+            if line_count % 4 in (0, 2):
+                pigz_compress.stdin.write(_clean_header_line(line.decode()))
             else:
                 pigz_compress.stdin.write(line)
             line_count += 1

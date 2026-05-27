@@ -234,9 +234,9 @@ def main():
         # Pipeline parameters (RNA-seq specific)
         params = {
             # UMI
-            "with_umi": "true",
-            "umitools_extract_method": "regex",
-            "umitools_bc_pattern": "^(?P<discard_1>.{4})(?P<umi_1>.{5})",
+            #"with_umi": "true",
+            "umitools_extract_method": "string",
+            "umitools_bc_pattern": "NNNNN",
             "skip_umi_extract": "false",
             "umitools_dedup_stats": "false",
             "save_umi_intermeds": "false",

@@ -3,7 +3,7 @@
 #SBATCH --time=12:00:00
 #SBATCH --mem=8G
 #SBATCH --cpus-per-task=4
-#SBATCH --array=1-73
+#SBATCH --array=1-29
 #SBATCH --output=/scratch/prj/ppn_rnp_networks/users/mike.jones/logs/uploadsample_simple_%A_%a.out
 #SBATCH --error=/scratch/prj/ppn_rnp_networks/users/mike.jones/logs/uploadsample_simple_%A_%a.err
 
@@ -13,10 +13,9 @@ ENV_PREFIX="/scratch/prj/ppn_rnp_networks/users/mike.jones/software/mambaforge"
 source "${ENV_PREFIX}/etc/profile.d/conda.sh"
 conda activate flowbio
 
-XLSX_FILE="/scratch/prj/ppn_rnp_networks/users/mike.jones/data/eCLIP/ctrl/ENCODE_ctrl.xlsx"
-BASE_DIR="/scratch/prj/ppn_rnp_networks/users/mike.jones/data/eCLIP/ctrl"
+XLSX_FILE="/scratch/prj/ppn_rnp_networks/users/mike.jones/data/speckles/SraRunTable_from_template.xlsx"
 
-ROW_SPEC=$(python3 - "${XLSX_FILE}" "${SLURM_ARRAY_TASK_ID}" 4 <<'PY'
+ROW_SPEC=$(python3 - "${XLSX_FILE}" "${SLURM_ARRAY_TASK_ID}" 1 <<'PY'
 import sys
 import pandas as pd
 
@@ -25,7 +24,7 @@ task_id = int(sys.argv[2])
 samples_per_task = int(sys.argv[3])
 
 # Calculate the starting row index for this task (1-based)
-# Task 1: rows 1-4, Task 2: rows 5-8, Task 3: rows 9-12, etc.
+# One sample per task: Task 1 -> row 1, Task 2 -> row 2, ...
 start_idx = (task_id - 1) * samples_per_task + 1
 end_idx = start_idx + samples_per_task - 1
 
@@ -36,7 +35,7 @@ num_rows = len(df)
 rows = []
 for idx in range(1, num_rows + 1):
     if start_idx <= idx <= end_idx:
-            rows.append(str(idx))
+        rows.append(str(idx))
 
 if rows:
     print(",".join(rows))
@@ -49,7 +48,6 @@ if [[ -z "${ROW_SPEC}" ]]; then
 fi
 
 python3 uploadsample_flowbio_v5.py \
-  -p 164066902982405709 \
+  -p 392381750398848919 \
   -r "${ROW_SPEC}" \
-  --base-dir "${BASE_DIR}" \
   "${XLSX_FILE}"

@@ -1,0 +1,10 @@
+segment,flag,count
+GEO,no_sample_title,1317
+GEO,geo_is_series_not_sample,262
+GEO,no_srr_in_filename_for_gse,260
+GEO,run_mismatch_filename_vs_geo,1
+GEO,geo_format_unexpected,1
+ENA,geo_missing_but_ena_present_ok,144
+ENA,no_sample_title,144
+ENA,lookup_failed,9
+ENA,runinfo_lookup_failed,8
