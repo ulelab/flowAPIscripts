@@ -201,6 +201,11 @@ def main() -> int:
     ap.add_argument("--workers", type=int, default=DEFAULT_WORKERS)
     ap.add_argument("--max-projects", type=int, default=0, help="If >0, only first N projects (debug)")
     ap.add_argument(
+        "--project-id",
+        default="",
+        help="If set, pull only this project ID (e.g. 548481478754251364)",
+    )
+    ap.add_argument(
         "--include-private",
         action="store_true",
         help="Include samples with private=True (default: only public)",
@@ -216,9 +221,16 @@ def main() -> int:
     token = rest_login(session, args.username, args.password)
 
     projects = fetch_all_projects(session, token)
-    if args.max_projects > 0:
+    if args.project_id:
+        selected = str(args.project_id).strip()
+        projects = [p for p in projects if str(p.get("id") or "") == selected]
+        if not projects:
+            logging.error("project_id %s not found in /projects listing", selected)
+            return 2
+        logging.info("Using project filter: %s", selected)
+    elif args.max_projects > 0:
         projects = projects[: args.max_projects]
-    logging.info("Discovered %d projects", len(projects))
+    logging.info("Discovered %d project(s) to process", len(projects))
 
     tasks: List[Tuple[str, str, Optional[bool]]] = []
     for p in projects:

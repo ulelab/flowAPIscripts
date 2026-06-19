@@ -441,7 +441,7 @@ def main():
         # Pipeline parameters
         params = {
             "move_umi_to_header": "true",
-            "umi_header_format": "NNNNNNNNN",
+            "umi_header_format": "NNNNNNNNNNNNNNN",
             "umi_separator": "_",
             "skip_umi_dedupe": "false",
             "crosslink_position": "start",

@@ -4,11 +4,12 @@ import getpass
 import json
 import logging
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Pattern, Set
 
 import requests
 
 API_BASE = "https://api.flow.bio"
+APP_API_BASE = "https://app.flow.bio/api"
 
 
 def parse_args() -> argparse.Namespace:
@@ -28,6 +29,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--password", default=None, help="Flow password (prompted if omitted)")
     parser.add_argument("--page-size", type=int, default=100, help="Page size for project sample listing")
     parser.add_argument(
+        "--data-page-size",
+        type=int,
+        default=100,
+        help="Page size for /samples/{id}/data listing (default: 100)",
+    )
+    parser.add_argument(
         "--max-samples",
         type=int,
         default=None,
@@ -37,6 +44,24 @@ def parse_args() -> argparse.Namespace:
         "--uploaded-only",
         action="store_true",
         help="Only emit samples that have at least one associated data record marked as Uploaded",
+    )
+    parser.add_argument(
+        "--data-source",
+        choices=("filesets", "sample_data", "both"),
+        default="filesets",
+        help=(
+            "Where to list sample-associated files: filesets (uploaded FASTQs), "
+            "sample_data (/samples/{id}/data, includes pipeline outputs), or both."
+        ),
+    )
+    parser.add_argument(
+        "--filename-regex",
+        default=None,
+        help=(
+            "Only keep data files whose filename matches this regex. "
+            "Example for C34_2.markdup.sorted.bam: '\\.markdup\\.sorted\\.bam$' "
+            "(in shell: --filename-regex '\\.markdup\\.sorted\\.bam$')"
+        ),
     )
     parser.add_argument(
         "--output-json",
@@ -129,6 +154,58 @@ def fetch_data_detail(session: requests.Session, token: str, data_id: str) -> Di
     return resp.json()
 
 
+def _collect_sample_data_entries(
+    session: requests.Session, token: str, sample_id: str, page_size: int = 100
+) -> List[Dict[str, Any]]:
+    headers = {"Authorization": f"Bearer {token}"}
+    page = 1
+    collected: List[Dict[str, Any]] = []
+    seen_ids: Set[str] = set()
+    total_reported: Optional[int] = None
+
+    while True:
+        resp = session.get(
+            f"{APP_API_BASE}/samples/{sample_id}/data",
+            params={"page": page, "count": page_size},
+            headers=headers,
+            timeout=30,
+        )
+        raise_for_status(resp)
+        payload = resp.json()
+        if total_reported is None:
+            total_reported = payload.get("count")
+        entries = payload.get("data", [])
+        if not isinstance(entries, list) or not entries:
+            break
+
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            data_id = entry.get("id")
+            if not data_id:
+                continue
+            sid = str(data_id)
+            if sid in seen_ids:
+                continue
+            seen_ids.add(sid)
+            collected.append(entry)
+
+        if len(entries) < page_size:
+            break
+        if total_reported is not None and len(collected) >= int(total_reported):
+            break
+        page += 1
+
+    logging.debug(
+        "Sample %s: paginated data entries=%s (reported total=%s, pages=%s)",
+        sample_id,
+        len(collected),
+        total_reported,
+        page,
+    )
+    return collected
+
+
 def _collect_data_ids_from_filesets(sample_detail: Dict[str, Any]) -> List[str]:
     data_ids: List[str] = []
     filesets = sample_detail.get("filesets", [])
@@ -166,11 +243,21 @@ def _is_uploaded_data_record(record: Dict[str, Any]) -> bool:
     return False
 
 
+def _matches_filename(record: Dict[str, Any], pattern: Optional[Pattern[str]]) -> bool:
+    if pattern is None:
+        return True
+    filename = record.get("filename") or ""
+    return bool(pattern.search(str(filename)))
+
+
 def collect_sample_and_data_metadata(
     project_samples: List[Dict[str, Any]],
     session: requests.Session,
     token: str,
     uploaded_only: bool = False,
+    data_source: str = "filesets",
+    filename_pattern: Optional[Pattern[str]] = None,
+    data_page_size: int = 100,
     max_samples: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
     collected: List[Dict[str, Any]] = []
@@ -184,17 +271,56 @@ def collect_sample_and_data_metadata(
             continue
         detail = fetch_sample_detail(session, token, sample_id)
         sample_metadata = detail.get("metadata") if isinstance(detail.get("metadata"), dict) else {}
-        data_ids = _collect_data_ids_from_filesets(detail)
-        data_candidates: List[Dict[str, Any]] = []
+        data_ids: List[str] = []
+        if data_source in ("filesets", "both"):
+            data_ids.extend(_collect_data_ids_from_filesets(detail))
+        list_entries: List[Dict[str, Any]] = []
+        if data_source in ("sample_data", "both"):
+            try:
+                list_entries = _collect_sample_data_entries(
+                    session, token, sample_id, page_size=data_page_size
+                )
+                data_ids.extend(str(entry["id"]) for entry in list_entries if entry.get("id"))
+            except Exception as exc:
+                logging.warning("Failed to fetch /samples/%s/data: %s", sample_id, exc)
+        unique_ids: List[str] = []
+        seen = set()
         for data_id in data_ids:
+            if data_id not in seen:
+                seen.add(data_id)
+                unique_ids.append(data_id)
+
+        ids_to_fetch: List[str] = []
+        if filename_pattern is not None and list_entries:
+            by_filename: Dict[str, Dict[str, Any]] = {}
+            for entry in list_entries:
+                if not _matches_filename(entry, filename_pattern):
+                    continue
+                filename = str(entry.get("filename") or "")
+                if not filename:
+                    continue
+                prev = by_filename.get(filename)
+                if prev is None or int(entry.get("size") or 0) >= int(prev.get("size") or 0):
+                    by_filename[filename] = entry
+            ids_to_fetch = [str(entry["id"]) for entry in by_filename.values() if entry.get("id")]
+        else:
+            ids_to_fetch = unique_ids
+
+        data_candidates: List[Dict[str, Any]] = []
+        for data_id in ids_to_fetch:
             try:
                 data_candidates.append(fetch_data_detail(session, token, data_id))
             except Exception as exc:
                 logging.warning("Failed to fetch /data/%s: %s", data_id, exc)
+        if filename_pattern is not None and not list_entries:
+            data_candidates = [d for d in data_candidates if _matches_filename(d, filename_pattern)]
         uploaded_data = [d for d in data_candidates if _is_uploaded_data_record(d)]
 
         if uploaded_only and not uploaded_data:
             logging.debug("Skipping sample %s with no Uploaded data records", sample_id)
+            continue
+        if filename_pattern is not None and not data_candidates:
+            logging.debug("Skipping sample %s with no filename matches", sample_id)
             continue
 
         record = {
@@ -223,6 +349,8 @@ def main() -> None:
     setup_logging(args.debug)
     project_id = extract_project_id(args.project)
 
+    filename_pattern = re.compile(args.filename_regex) if args.filename_regex else None
+
     session = requests.Session()
     token = rest_login(session, args.username, args.password)
     project_samples = fetch_all_project_samples(
@@ -233,6 +361,9 @@ def main() -> None:
         session=session,
         token=token,
         uploaded_only=args.uploaded_only,
+        data_source=args.data_source,
+        filename_pattern=filename_pattern,
+        data_page_size=args.data_page_size,
         max_samples=args.max_samples,
     )
 

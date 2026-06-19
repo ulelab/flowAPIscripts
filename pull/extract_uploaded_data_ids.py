@@ -5,8 +5,9 @@
 
 import argparse
 import json
+import re
 from pathlib import Path
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List, Optional, Pattern, Set
 
 
 def parse_args() -> argparse.Namespace:
@@ -33,6 +34,17 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Sort IDs before writing output",
     )
+    parser.add_argument(
+        "--source-field",
+        choices=("uploaded_data", "data"),
+        default="uploaded_data",
+        help="Which per-sample list in the JSON to read IDs from (default: uploaded_data)",
+    )
+    parser.add_argument(
+        "--filename-regex",
+        default=None,
+        help="Optional extra filename filter when extracting IDs",
+    )
     return parser.parse_args()
 
 
@@ -43,15 +55,28 @@ def load_project_records(path: Path) -> List[Dict[str, Any]]:
     return [x for x in payload if isinstance(x, dict)]
 
 
-def collect_uploaded_data_ids(records: List[Dict[str, Any]]) -> List[str]:
+def _matches_filename(entry: Dict[str, Any], pattern: Optional[Pattern[str]]) -> bool:
+    if pattern is None:
+        return True
+    filename = entry.get("filename") or ""
+    return bool(pattern.search(str(filename)))
+
+
+def collect_data_ids(
+    records: List[Dict[str, Any]],
+    source_field: str,
+    filename_pattern: Optional[Pattern[str]] = None,
+) -> List[str]:
     unique: Set[str] = set()
     ordered: List[str] = []
     for record in records:
-        uploaded = record.get("uploaded_data", [])
-        if not isinstance(uploaded, list):
+        entries = record.get(source_field, [])
+        if not isinstance(entries, list):
             continue
-        for entry in uploaded:
+        for entry in entries:
             if not isinstance(entry, dict):
+                continue
+            if not _matches_filename(entry, filename_pattern):
                 continue
             data_id = entry.get("id")
             if not data_id:
@@ -68,8 +93,13 @@ def main() -> None:
     input_path = Path(args.input_json)
     output_path = Path(args.output_txt)
 
+    filename_pattern = re.compile(args.filename_regex) if args.filename_regex else None
     records = load_project_records(input_path)
-    data_ids = collect_uploaded_data_ids(records)
+    data_ids = collect_data_ids(
+        records,
+        source_field=args.source_field,
+        filename_pattern=filename_pattern,
+    )
     if args.sort:
         data_ids = sorted(data_ids)
 
@@ -77,7 +107,8 @@ def main() -> None:
     output_path.write_text("\n".join(data_ids) + ("\n" if data_ids else ""), encoding="utf-8")
 
     print(
-        f"Extracted {len(data_ids)} uploaded data IDs from {input_path} -> {output_path}"
+        f"Extracted {len(data_ids)} data IDs from {input_path} "
+        f"(field={args.source_field}) -> {output_path}"
     )
 
 

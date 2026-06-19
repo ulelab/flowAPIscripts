@@ -1,28 +1,26 @@
 #!/usr/bin/env python3
 """
-Diff updated public-samples CSV (v4) against baseline v3 pull, then
-interactively push whitelisted metadata changes to Flow.bio with per-row verification.
+Diff updated public-samples CSV against a baseline pull, then push metadata to Flow.bio.
+
+v2 adds REST /edit for attribute annotations on nested metadata objects:
+  - purification_target + purification_target__annotation
+  - source + source__annotation (annotation is the sub-field on source)
 
 Transport:
-  - GraphQL updateSample: sample_name, condition, comments, purification_agent,
-    purification_target
-  - REST POST app.flow.bio/api/samples/{id}/edit: purification_target__annotation
-    (flat key; matches GET metadata.purification_target.annotation)
+  - GraphQL updateSample: scalar metadata fields (not *_ _annotation)
+  - REST POST app.flow.bio/api/samples/{id}/edit: *_ _annotation keys (flat; matches GET)
 
 Credentials: FLOWBIO_USERNAME / FLOWBIO_PASSWORD or --username / --password.
 
 Examples:
-  export FLOWBIO_USERNAME=...
-  export FLOWBIO_PASSWORD=...
+  python3 flow_public_samples_push_metadata_v2.py --dry-run \\
+    --baseline flow_public_samples_pull_v7.csv \\
+    --updated flow_public_samples_bulk_push_w7_colleague_updates.csv
 
-  # Review all pending changes (no API calls)
-  python3 flow_public_samples_push_metadata.py --dry-run
-
-  # Interactive push with verification after each approved row
-  python3 flow_public_samples_push_metadata.py
-
-  # Test first change only
-  python3 flow_public_samples_push_metadata.py --limit 1
+  python3 flow_public_samples_push_metadata_v2.py --yes --allow-clear \\
+    --baseline flow_public_samples_pull_v7.csv \\
+    --updated flow_public_samples_bulk_push_w7_colleague_updates.csv \\
+    --username USER --password PASS
 """
 
 from __future__ import annotations
@@ -65,28 +63,38 @@ from flow_public_samples_pull_v3 import (  # noqa: E402
     rest_login,
 )
 
-DEFAULT_BASELINE = _SCRIPT_DIR / "flow_public_samples_pull_v3.csv"
-DEFAULT_UPDATED = _SCRIPT_DIR / "flow_public_samples_pull_v4.csv"
+DEFAULT_BASELINE = _SCRIPT_DIR / "flow_public_samples_pull_v7.csv"
+DEFAULT_UPDATED = _SCRIPT_DIR / "flow_public_samples_bulk_push_w7_colleague_updates.csv"
 REST_EDIT_API_BASE = "https://app.flow.bio/api"
 
-# CSV column -> GraphQL variable name (do not use purificationTargetText; it does not persist)
+# REST /edit: annotation CSV column -> parent value column on same metadata object
+REST_ANNOTATION_PARENT: Dict[str, str] = {
+    "purification_target__annotation": "purification_target",
+    "source__annotation": "source",
+}
+
+# CSV column -> GraphQL variable name (do not use *Text GraphQL vars; they do not persist)
 WHITELIST_GRAPHQL: Dict[str, str] = {
     "sample_name": "name",
     "condition": "condition",
     "comments": "comments",
+    "experimental_method": "experimentalMethod",
     "purification_agent": "purificationAgent",
     "purification_target": "purificationTarget",
+    "source": "source",
 }
 
-# CSV column -> REST /edit JSON key (flat; same as pull column name)
-WHITELIST_REST_EDIT: Tuple[str, ...] = ("purification_target__annotation",)
+# CSV columns pushed via REST /edit (flat keys; same names as pull CSV)
+WHITELIST_REST_EDIT: Tuple[str, ...] = tuple(REST_ANNOTATION_PARENT.keys())
 
 GRAPHQL_VAR_TYPES: Dict[str, str] = {
     "name": "String",
     "condition": "String",
     "comments": "String",
+    "experimentalMethod": "String",
     "purificationAgent": "String",
     "purificationTarget": "String",
+    "source": "String",
 }
 
 
@@ -157,11 +165,12 @@ class PendingChange:
         for fc in self.field_changes:
             if fc.transport == "rest":
                 body[fc.api_field] = fc.new_value
-        # REST /edit expects the attribute value alongside annotation (see GET shape).
-        if "purification_target__annotation" in body:
-            pt = _norm(self.v4_row.get("purification_target", ""))
-            if pt:
-                body["purification_target"] = pt
+        # REST /edit expects parent object value alongside annotation (see GET metadata shape).
+        for ann_col, parent_col in REST_ANNOTATION_PARENT.items():
+            if ann_col in body or parent_col in body:
+                parent_val = _norm(self.v4_row.get(parent_col, ""))
+                if parent_val:
+                    body[parent_col] = parent_val
         return body
 
     def payload(self) -> Dict[str, Any]:
@@ -180,15 +189,26 @@ class PendingChange:
             "purification_agent": "",
             "purification_target": "",
             "purification_target__annotation": "",
+            "source": "",
+            "source__annotation": "",
         }
         for fc in self.field_changes:
             base[fc.csv_column] = fc.new_value
         return base
 
 
+def _value_changed(old_v: str, new_v: str, allow_clear: bool) -> bool:
+    if old_v == new_v:
+        return False
+    if not new_v and not allow_clear:
+        return False
+    return True
+
+
 def compute_pending_changes(
     baseline: Dict[str, Dict[str, str]],
     updated: Dict[str, Dict[str, str]],
+    allow_clear: bool = False,
 ) -> Tuple[List[PendingChange], List[str]]:
     pending: List[PendingChange] = []
     warnings: List[str] = []
@@ -200,30 +220,47 @@ def compute_pending_changes(
             continue
 
         field_changes: List[FieldChange] = []
-        for csv_col, gql_field in WHITELIST_GRAPHQL.items():
-            old_v = _norm(v3_row.get(csv_col, ""))
-            new_v = _norm(v4_row.get(csv_col, ""))
-            if old_v == new_v or not new_v:
-                continue
-            field_changes.append(
-                FieldChange(
-                    csv_column=csv_col,
-                    transport="graphql",
-                    api_field=gql_field,
-                    old_value=old_v,
-                    new_value=new_v,
-                )
-            )
+
         for csv_col in WHITELIST_REST_EDIT:
             old_v = _norm(v3_row.get(csv_col, ""))
             new_v = _norm(v4_row.get(csv_col, ""))
-            if old_v == new_v or not new_v:
+            if not _value_changed(old_v, new_v, allow_clear):
                 continue
             field_changes.append(
                 FieldChange(
                     csv_column=csv_col,
                     transport="rest",
                     api_field=csv_col,
+                    old_value=old_v,
+                    new_value=new_v,
+                )
+            )
+
+        rest_cols = {fc.csv_column for fc in field_changes}
+        rest_parents = {REST_ANNOTATION_PARENT[c] for c in rest_cols if c in REST_ANNOTATION_PARENT}
+
+        for csv_col, gql_field in WHITELIST_GRAPHQL.items():
+            old_v = _norm(v3_row.get(csv_col, ""))
+            new_v = _norm(v4_row.get(csv_col, ""))
+            if not _value_changed(old_v, new_v, allow_clear):
+                continue
+            # When annotation changes, push parent via REST alongside annotation.
+            if csv_col in rest_parents:
+                field_changes.append(
+                    FieldChange(
+                        csv_column=csv_col,
+                        transport="rest",
+                        api_field=csv_col,
+                        old_value=old_v,
+                        new_value=new_v,
+                    )
+                )
+                continue
+            field_changes.append(
+                FieldChange(
+                    csv_column=csv_col,
+                    transport="graphql",
+                    api_field=gql_field,
                     old_value=old_v,
                     new_value=new_v,
                 )
@@ -421,20 +458,22 @@ def run_single_sample_test(
     token: str,
     sample_id: str,
     annotation: str,
-    protein_target: str = "",
+    parent_value: str = "",
+    field: str = "purification_target__annotation",
 ) -> int:
-    """POST one purification_target__annotation edit and verify via GET."""
-    body: Dict[str, str] = {"purification_target__annotation": annotation}
-    if protein_target:
-        body["purification_target"] = protein_target
-    else:
-        detail = fetch_sample_detail(session, token, sample_id)
-        flat = flatten_sample_detail(detail)
-        pt = _norm(flat.get("purification_target", ""))
-        if pt:
-            body["purification_target"] = pt
-        print(f"Current live purification_target: {pt!r}")
-        print(f"Current live annotation: {_norm(flat.get('purification_target__annotation', ''))!r}")
+    """POST one REST annotation edit and verify via GET."""
+    if field not in REST_ANNOTATION_PARENT:
+        print(f"Unsupported --test-field {field!r}; choose from {list(REST_ANNOTATION_PARENT)}")
+        return 2
+    parent_col = REST_ANNOTATION_PARENT[field]
+    body: Dict[str, str] = {field: annotation}
+    detail = fetch_sample_detail(session, token, sample_id)
+    flat = flatten_sample_detail(detail)
+    pv = parent_value or _norm(flat.get(parent_col, ""))
+    if pv:
+        body[parent_col] = pv
+    print(f"Current live {parent_col}: {pv!r}")
+    print(f"Current live {field}: {_norm(flat.get(field, ''))!r}")
 
     print(f"\nPOST {REST_EDIT_API_BASE}/samples/{sample_id}/edit")
     print(json.dumps(body, indent=2))
@@ -445,9 +484,9 @@ def run_single_sample_test(
     print("POST OK")
 
     flat = flatten_sample_detail(fetch_sample_detail(session, token, sample_id))
-    live = _norm(flat.get("purification_target__annotation", ""))
+    live = _norm(flat.get(field, ""))
     if live == annotation:
-        print(f"VERIFY OK: purification_target__annotation={live!r}")
+        print(f"VERIFY OK: {field}={live!r}")
         return 0
     print(f"VERIFY MISMATCH: expected={annotation!r} live={live!r}")
     return 1
@@ -500,7 +539,23 @@ def main() -> int:
     ap.add_argument(
         "--test-annotation",
         default="reCLIP_hnRNPC",
-        help="With --test-sample-id, value for purification_target__annotation",
+        help="With --test-sample-id, annotation value to POST",
+    )
+    ap.add_argument(
+        "--test-field",
+        default="purification_target__annotation",
+        choices=tuple(REST_ANNOTATION_PARENT.keys()),
+        help="With --test-sample-id, which annotation column to test",
+    )
+    ap.add_argument(
+        "--test-parent-value",
+        default="",
+        help="With --test-sample-id, parent value (e.g. source or purification_target); default from live sample",
+    )
+    ap.add_argument(
+        "--allow-clear",
+        action="store_true",
+        help="Push empty values when baseline had text (clears condition/annotations)",
     )
     args = ap.parse_args()
 
@@ -523,6 +578,8 @@ def main() -> int:
             token,
             args.test_sample_id.strip(),
             args.test_annotation.strip(),
+            parent_value=args.test_parent_value.strip(),
+            field=args.test_field,
         )
 
     try:
@@ -532,12 +589,12 @@ def main() -> int:
         logging.error("%s", exc)
         return 2
 
-    pending, warnings = compute_pending_changes(baseline, updated)
+    pending, warnings = compute_pending_changes(baseline, updated, allow_clear=args.allow_clear)
     for w in warnings:
         logging.warning("%s", w)
 
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    pending_path = args.audit_dir / f"flow_public_samples_push_pending_{ts}.csv"
+    pending_path = args.audit_dir / f"flow_public_samples_push_v2_pending_{ts}.csv"
     write_pending_csv(pending_path, pending)
     logging.info("Wrote %d pending field changes to %s", sum(len(p.field_changes) for p in pending), pending_path)
     logging.info("Samples with changes: %d", len(pending))
@@ -555,7 +612,7 @@ def main() -> int:
         logging.info("No pushable changes found.")
         return 0
 
-    audit_path = args.audit_dir / f"flow_public_samples_push_audit_{ts}.jsonl"
+    audit_path = args.audit_dir / f"flow_public_samples_push_v2_audit_{ts}.jsonl"
 
     client = Client()
     try:
