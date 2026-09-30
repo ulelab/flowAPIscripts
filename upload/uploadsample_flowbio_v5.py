@@ -50,7 +50,7 @@ def build_metadata(row: Dict[str, Any], project_id: int) -> Dict[str, Any]:
         "source": _get(row, "Source") or _get(row, "Cell or Tissue"),
         "source_annotation": _get(row, "Source Text"),
         "purification_target": _get(row, "Protein (Purification Target)") or _get(row, "Purification Target"),
-        "purification_target_annotation": _get(row, "Purification Target Annotation"),
+        "purification_target__annotation": _get(row, "Purification Target Annotation"),
         "strandedness": _get(row, "Strandedness (Required)") or _get(row, "Strandedness"),
         "rna_selection_method": _get(row, "RNA Selection Method"),
         "ribosome_type": _get(row, "Ribosome Type"),

@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 import argparse
+import json
 import logging
+import os
 import sys
+from pathlib import Path
 from typing import Dict, List, Tuple
 import numpy as np
 import re
@@ -26,6 +29,12 @@ def parse_args():
                    help="End execution at batch number (1-based, default: all batches)")
     p.add_argument("--limit", type=str, default=None,
                    help="Limit samples after filtering. Use 'N' for first N samples, or 'M-N' for range (e.g., '15-37'). Default: no limit")
+    p.add_argument("--params-json", type=Path, default=None,
+                   help="JSON file overriding default CLIP pipeline params (e.g. from flow-compile pipeline_params.json)")
+    p.add_argument("--yes", action="store_true",
+                   help="Skip interactive submit confirmation (for automated flow-compile runs)")
+    p.add_argument("--username", default=os.environ.get("FLOWBIO_USERNAME", ""), help="Flow username")
+    p.add_argument("--password", default=os.environ.get("FLOWBIO_PASSWORD", ""), help="Flow password")
     return p.parse_args()
 
 # -------------------------
@@ -75,7 +84,7 @@ FILE_MAP = {
 # -------------------------
 # REST helpers for data discovery (prep execution and samples)
 # -------------------------
-API_BASE = "https://api.flow.bio"
+API_BASE = os.environ.get("FLOWBIO_API_BASE", "https://app.flow.bio/api")
 
 def _raise_for_status(resp: requests.Response):
     try:
@@ -84,9 +93,14 @@ def _raise_for_status(resp: requests.Response):
         msg = f"HTTP {resp.status_code} error: {resp.text}"
         raise requests.HTTPError(msg) from e
 
-def rest_login(session: requests.Session) -> str:
-    username = input("Enter your username: ")
-    password = getpass.getpass("Enter your password: ")
+def rest_login(session: requests.Session, username: str = "", password: str = "") -> str:
+    if not username:
+        username = os.environ.get("FLOWBIO_USERNAME", "")
+    if not password:
+        password = os.environ.get("FLOWBIO_PASSWORD", "")
+    if not username or not password:
+        username = input("Enter your username: ")
+        password = getpass.getpass("Enter your password: ")
     r = session.post(f"{API_BASE}/login", json={"username": username, "password": password}, timeout=30)
     _raise_for_status(r)
     data = r.json()
@@ -336,7 +350,7 @@ def main():
 
     # REST session & auth
     session = requests.Session()
-    token = rest_login(session)
+    token = rest_login(session, args.username, args.password)
     headers = {"Authorization": f"Bearer {token}"}
 
     # Resolve pipeline version ID
@@ -438,7 +452,7 @@ def main():
             }
         } for s in chunk]
 
-        # Pipeline parameters
+        # Pipeline parameters (defaults; override with --params-json from flow-compile)
         params = {
             "move_umi_to_header": "true",
             "umi_header_format": "NNNNNNNNNNNNNNN",
@@ -448,6 +462,12 @@ def main():
             "encode_eclip": "false",
             "star_params": "--outFilterMultimapNmax 100 --outFilterMultimapScoreRange 1 --outSAMattributes All --alignSJoverhangMin 8 --alignSJDBoverhangMin 1 --outFilterType BySJout --alignIntronMin 20 --alignIntronMax 1000000 --outFilterScoreMin 10 --alignEndsType Extend5pOfRead1 --twopassMode Basic --limitOutSJcollapsed 4000000",
         }
+        if args.params_json:
+            override = json.loads(Path(args.params_json).read_text(encoding="utf-8"))
+            if not isinstance(override, dict):
+                raise SystemExit(f"--params-json must contain a JSON object: {args.params_json}")
+            params.update({k: str(v) for k, v in override.items()})
+            logging.info("Loaded pipeline params from %s", args.params_json)
 
         # Build payload for REST API submission
         payload = {
@@ -461,11 +481,10 @@ def main():
         }
         
         # Log payload size for debugging
-        import json
         payload_size = len(json.dumps(payload))
         logging.info("Batch %d payload size: %d bytes (%d samples)", i, payload_size, len(rows))
 
-        if i == 1:
+        if i == 1 and not args.yes:
             proceed = input("Submit? (y/n): ").strip().lower()
             if proceed != "y":
                 logging.info("Aborted by user.")

@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """
-Upload sequencing samples to Flow using flowbio.v2 from an XLSX sheet.
+Upload sequencing samples to Flow using flowbio.v2 from an annotation sheet.
+
+Supported formats: CSV, TSV, XLSX.
 
 Example:
 python3 uploadsample_flowbio_v6.py \
-  --input-xlsx test-datasets/Testtemplate.xlsx \
+  --input test-datasets/annotation.csv \
   --rows 1-3 \
   --project-id 123 \
   --base-dir flowAPIscripts
@@ -79,6 +81,25 @@ def resolve_path(path_str: str, base_dir: Path) -> Path:
     return path_obj.resolve()
 
 
+def load_annotation_table(path: Path, sheet: str | int = 0) -> pd.DataFrame:
+    """Load annotation rows from CSV, TSV, or XLSX."""
+    suffix = path.suffix.lower()
+    if suffix == ".xlsx":
+        sheet_arg: str | int = int(sheet) if str(sheet).isdigit() else sheet
+        df = pd.read_excel(path, sheet_name=sheet_arg)
+    elif suffix == ".tsv":
+        df = pd.read_csv(path, sep="\t")
+    elif suffix in {".csv", ".txt"}:
+        df = pd.read_csv(path)
+    else:
+        raise ValueError(
+            f"Unsupported annotation format {path.suffix!r} for {path}. "
+            "Use .csv, .tsv, or .xlsx"
+        )
+    df.columns = [str(c).strip() for c in df.columns]
+    return df
+
+
 def infer_data_files(row: dict[str, Any], base_dir: Path) -> dict[str, Path]:
     file1 = (
         _get(row, "File 1")
@@ -138,10 +159,14 @@ def collect_metadata(row: dict[str, Any]) -> dict[str, str]:
         "PubMed ID": "pubmed",
         "Source": "source",
         "Cell or Tissue": "source",
-        "Source Text": "source_annotation",
+        "Source Text": "source__annotation",
         "Protein (Purification Target)": "purification_target",
         "Purification Target": "purification_target",
-        "Purification Target Annotation": "purification_target_annotation",
+        # Flow REST stores nested annotation on metadata objects as <key>__annotation
+        # (see flow_public_samples_pull_v3.py / flow_public_samples_push_metadata_v2.py).
+        "Purification Target Annotation": "purification_target__annotation",
+        "purification_target__annotation": "purification_target__annotation",
+        "source__annotation": "source__annotation",
         "Strandedness (Required)": "strandedness",
         "Strandedness": "strandedness",
         "RNA Selection Method": "rna_selection_method",
@@ -163,9 +188,13 @@ def collect_metadata(row: dict[str, Any]) -> dict[str, str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Flow.bio v2 sample upload from XLSX")
-    parser.add_argument("--input-xlsx", required=True, help="Path to XLSX input sheet")
-    parser.add_argument("--sheet", default=0, help="Sheet name or index (default: 0)")
+    parser = argparse.ArgumentParser(description="Flow.bio v2 sample upload from CSV/TSV/XLSX")
+    parser.add_argument("--input", help="Path to annotation sheet (.csv, .tsv, or .xlsx)")
+    parser.add_argument(
+        "--input-xlsx",
+        help="Deprecated alias for --input (XLSX/CSV/TSV all supported)",
+    )
+    parser.add_argument("--sheet", default=0, help="Sheet name or index for XLSX only (default: 0)")
     parser.add_argument("--rows", required=True, help="Row selection, e.g. 1-3,7")
     parser.add_argument("--project-id", required=True, help="Target Flow project ID")
     parser.add_argument("--base-dir", default=".", help="Base directory for relative file paths")
@@ -178,13 +207,16 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true", help="Validate inputs without uploading")
     args = parser.parse_args()
 
+    input_path = args.input or args.input_xlsx
+    if not input_path:
+        print("Provide --input (or deprecated --input-xlsx).", file=sys.stderr)
+        return 2
+
     if not args.username or not args.password:
         print("Missing credentials. Provide --username/--password or FLOWBIO_USERNAME/FLOWBIO_PASSWORD.", file=sys.stderr)
         return 2
 
-    sheet = int(args.sheet) if str(args.sheet).isdigit() else args.sheet
-    df = pd.read_excel(args.input_xlsx, sheet_name=sheet)
-    df.columns = [str(c).strip() for c in df.columns]
+    df = load_annotation_table(Path(input_path), sheet=args.sheet)
     rows = df.to_dict(orient="records")
 
     selected_rows = parse_rows(args.rows, len(rows))
